@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Configuration for AI-Ready Cluster
-CPU_REQ=4
-MEM_REQ=8192
+CPU_REQ=8
+MEM_REQ=16284
 K8S_VER="v1.35.0"
 PROFILE="minikube"
 
