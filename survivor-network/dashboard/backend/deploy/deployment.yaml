@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: survivor-secrets
+  namespace: survivor-apps
+type: Opaque
+data:
+  # echo -n "your-secret-key" | base64
+  jwt-secret-key: c3Vydml2b3Itc3VwZXItc2VjcmV0LWtleQ== 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: survivor-mission-control
+  namespace: survivor-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mission-control
+  template:
+    metadata:
+      labels:
+        app: mission-control
+    spec:
+      # Ensure the API runs on the 'compute' node as per your Terraform labels
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: tier
+                operator: In
+                values:
+                - compute
+      containers:
+      - name: backend
+        image: survivor-net/mission-control:latest
+        imagePullPolicy: Never # Critical for local Kind images
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_HOST
+          value: "survivor-db-postgresql.data.svc.cluster.local"
+        - name: DB_USER
+          value: "survivor"
+        - name: DB_PASS
+          value: "survivor-pw"  # <--- This is the missing link!
+        - name: DB_NAME
+          value: "survivor"
+        - name: DB_PORT
+          value: "5432"
+        - name: PYTHONPATH # Ensure the API can find your 'app' folder
+          value: "/app"
+        - name: MINIO_ENDPOINT
+          value: "survivor-storage.data.svc.cluster.local:9000"
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: survivor-secrets
+              key: jwt-secret-key
+        - name: API_BASE_URL
+          value: "http://minio-api.127.0.0.1.nip.io"
+        - name: MAP_BASE_URL
+          value: "http://minio.127.0.0.1.nip.io"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mission-control-svc
+  namespace: survivor-apps
+spec:
+  selector:
+    app: mission-control
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080

@@ -1,0 +1,23 @@
+# Web framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# Local Data Tier 
+psycopg2-binary>=2.9.9    # PostgreSQL driver 
+minio>=7.2.0              # S3-compatible client 
+sqlalchemy>=2.0.0         # ORM for easier "Survivor" queries
+
+# AI & Logic (For the Agent/Brain)
+google-generativeai>=0.4.0 # To keep using the Gemini LLM logic
+numpy>=1.26.0
+
+# Utilities
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+
+
+PyJWT[crypto]>=2.8.0
+passlib[bcrypt]>=1.7.4
+
+asyncpg
