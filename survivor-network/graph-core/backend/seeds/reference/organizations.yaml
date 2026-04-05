@@ -1,0 +1,16 @@
+nodes:
+  - key: gauteng_health
+    node_type: Organization
+    label: Gauteng Health
+    metadata: {}
+
+  - key: legal_aid_sa
+    node_type: Organization
+    label: Legal Aid South Africa
+    metadata: {}
+
+edges:
+  - from: hillbrow_clinic
+    to: gauteng_health
+    edge_type: OPERATED_BY
+    metadata: {}

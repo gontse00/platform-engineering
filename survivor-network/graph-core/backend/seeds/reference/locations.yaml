@@ -1,0 +1,29 @@
+nodes:
+  - key: south_africa
+    node_type: Location
+    label: South Africa
+    metadata:
+      level: country
+
+  - key: gauteng
+    node_type: Location
+    label: Gauteng
+    metadata:
+      level: province
+
+  - key: johannesburg
+    node_type: Location
+    label: Johannesburg
+    metadata:
+      level: city
+
+edges:
+  - from: gauteng
+    to: south_africa
+    edge_type: LOCATED_IN
+    metadata: {}
+
+  - from: johannesburg
+    to: gauteng
+    edge_type: LOCATED_IN
+    metadata: {}
