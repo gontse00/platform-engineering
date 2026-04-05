@@ -1,0 +1,19 @@
+image: minio/minio:latest
+pullPolicy: IfNotPresent
+
+service:
+  apiPort: 9000
+  consolePort: 9001
+
+auth:
+  secretName: "minio-auth"  # This must match what you named your secret.yaml
+  rootUser: "survivor-admin"
+  rootPassword: "survivor-storage-pw"
+
+# Resources for your MacBook
+resources:
+  limits:
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 512Mi

@@ -1,0 +1,753 @@
+{
+  "version": 4,
+  "terraform_version": "1.5.7",
+  "serial": 129,
+  "lineage": "a467849a-663b-4e30-ba3d-f050157212b2",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "ingress_nginx",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "ingress-nginx",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "ingress-nginx",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "1.15.1",
+                "chart": "ingress-nginx",
+                "first_deployed": 1774472986,
+                "last_deployed": 1774472986,
+                "name": "ingress-nginx",
+                "namespace": "kube-system",
+                "notes": "The ingress-nginx controller has been installed.\nGet the application URL by running these commands:\n  export HTTP_NODE_PORT=$(kubectl get service --namespace kube-system ingress-nginx-controller --output jsonpath=\"{.spec.ports[0].nodePort}\")\n  export HTTPS_NODE_PORT=$(kubectl get service --namespace kube-system ingress-nginx-controller --output jsonpath=\"{.spec.ports[1].nodePort}\")\n  export NODE_IP=\"$(kubectl get nodes --output jsonpath=\"{.items[0].status.addresses[1].address}\")\"\n\n  echo \"Visit http://${NODE_IP}:${HTTP_NODE_PORT} to access your application via HTTP.\"\n  echo \"Visit https://${NODE_IP}:${HTTPS_NODE_PORT} to access your application via HTTPS.\"\n\nAn example Ingress that makes use of the controller:\n  apiVersion: networking.k8s.io/v1\n  kind: Ingress\n  metadata:\n    name: example\n    namespace: foo\n  spec:\n    ingressClassName: nginx\n    rules:\n      - host: www.example.com\n        http:\n          paths:\n            - pathType: Prefix\n              backend:\n                service:\n                  name: exampleService\n                  port:\n                    number: 80\n              path: /\n    # This section is only required if TLS is to be enabled for the Ingress\n    tls:\n      - hosts:\n        - www.example.com\n        secretName: example-tls\n\nIf TLS is enabled for the Ingress, a Secret containing the certificate and key must also be provided:\n\n  apiVersion: v1\n  kind: Secret\n  metadata:\n    name: example-tls\n    namespace: foo\n  data:\n    tls.crt: \u003cbase64 encoded cert\u003e\n    tls.key: \u003cbase64 encoded key\u003e\n  type: kubernetes.io/tls\n",
+                "revision": 1,
+                "values": "{\"controller\":{\"hostPort\":{\"enabled\":true},\"nodeSelector\":{\"ingress-ready\":\"true\"},\"service\":{\"type\":\"NodePort\"},\"watchIngressWithoutClass\":true}}",
+                "version": "4.15.1"
+              }
+            ],
+            "name": "ingress-nginx",
+            "namespace": "kube-system",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "https://kubernetes.github.io/ingress-nginx",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [
+              {
+                "name": "controller.hostPort.enabled",
+                "type": "",
+                "value": "true"
+              },
+              {
+                "name": "controller.nodeSelector.ingress-ready",
+                "type": "string",
+                "value": "true"
+              },
+              {
+                "name": "controller.service.type",
+                "type": "",
+                "value": "NodePort"
+              },
+              {
+                "name": "controller.watchIngressWithoutClass",
+                "type": "",
+                "value": "true"
+              }
+            ],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": null,
+            "verify": false,
+            "version": "4.15.1",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "kube_prometheus_stack",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "kube-prometheus-stack",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "kube-prometheus-stack",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "v0.89.0",
+                "chart": "kube-prometheus-stack",
+                "first_deployed": 1774473118,
+                "last_deployed": 1774473118,
+                "name": "kube-prometheus-stack",
+                "namespace": "observability",
+                "notes": "1. Get your 'admin' user password by running:\n\n   kubectl get secret --namespace observability kube-prometheus-stack-grafana -o jsonpath=\"{.data.admin-password}\" | base64 --decode ; echo\n\n\n2. The Grafana server can be accessed via port 80 on the following DNS name from within your cluster:\n\n   kube-prometheus-stack-grafana.observability.svc.cluster.local\n\n   If you bind grafana to 80, please update values in values.yaml and reinstall:\n   ```\n   securityContext:\n     runAsUser: 0\n     runAsGroup: 0\n     fsGroup: 0\n\n   command:\n   - \"setcap\"\n   - \"'cap_net_bind_service=+ep'\"\n   - \"/usr/sbin/grafana-server \u0026\u0026\"\n   - \"sh\"\n   - \"/run.sh\"\n   ```\n   Details refer to https://grafana.com/docs/installation/configuration/#http-port.\n   Or grafana would always crash.\n\n   From outside the cluster, the server URL(s) are:\n     http://grafana.127.0.0.1.nip.io\n\n3. Login with the password from step 1 and the username: admin\n#################################################################################\n######   WARNING: Persistence is disabled!!! You will lose your data when   #####\n######            the Grafana pod is terminated.                            #####\n#################################################################################\n\nkube-prometheus-stack has been installed. Check its status by running:\n  kubectl --namespace observability get pods -l \"release=kube-prometheus-stack\"\n\nGet Grafana 'admin' user password by running:\n\n  kubectl --namespace observability get secrets kube-prometheus-stack-grafana -o jsonpath=\"{.data.admin-password}\" | base64 -d ; echo\n\nAccess Grafana local instance:\n\n  export POD_NAME=$(kubectl --namespace observability get pod -l \"app.kubernetes.io/name=grafana,app.kubernetes.io/instance=kube-prometheus-stack\" -oname)\n  kubectl --namespace observability port-forward $POD_NAME 3000\n\nGet your grafana admin user password by running:\n\n  kubectl get secret --namespace observability -l app.kubernetes.io/component=admin-secret -o jsonpath=\"{.items[0].data.admin-password}\" | base64 --decode ; echo\n\n\nVisit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create \u0026 configure Alertmanager and Prometheus instances using the Operator.\n",
+                "revision": 1,
+                "values": "{\"alertmanager\":{\"enabled\":false},\"grafana\":{\"additionalDataSources\":[{\"access\":\"proxy\",\"isDefault\":false,\"name\":\"Loki\",\"type\":\"loki\",\"url\":\"http://loki.observability.svc.cluster.local:3100\"},{\"access\":\"proxy\",\"isDefault\":false,\"name\":\"Tempo\",\"type\":\"tempo\",\"url\":\"http://tempo.observability.svc.cluster.local:3100\"}],\"adminPassword\":\"survivor-grafana-pw\",\"ingress\":{\"enabled\":true,\"hosts\":[\"grafana.127.0.0.1.nip.io\"],\"ingressClassName\":\"nginx\",\"path\":\"/\"},\"nodeSelector\":{\"tier\":\"tools\"}},\"kubeStateMetrics\":{\"enabled\":false},\"nodeExporter\":{\"enabled\":false},\"prometheus\":{\"ingress\":{\"enabled\":true,\"hosts\":[\"prometheus.127.0.0.1.nip.io\"],\"ingressClassName\":\"nginx\",\"paths\":[\"/\"]},\"prometheusSpec\":{\"nodeSelector\":{\"tier\":\"tools\"},\"storageSpec\":{}}},\"prometheusOperator\":{\"enabled\":false}}",
+                "version": "82.14.1"
+              }
+            ],
+            "name": "kube-prometheus-stack",
+            "namespace": "observability",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "https://prometheus-community.github.io/helm-charts",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 600,
+            "upgrade_install": null,
+            "values": [
+              "\"alertmanager\":\n  \"enabled\": false\n\"grafana\":\n  \"additionalDataSources\":\n  - \"access\": \"proxy\"\n    \"isDefault\": false\n    \"name\": \"Loki\"\n    \"type\": \"loki\"\n    \"url\": \"http://loki.observability.svc.cluster.local:3100\"\n  - \"access\": \"proxy\"\n    \"isDefault\": false\n    \"name\": \"Tempo\"\n    \"type\": \"tempo\"\n    \"url\": \"http://tempo.observability.svc.cluster.local:3100\"\n  \"adminPassword\": \"survivor-grafana-pw\"\n  \"ingress\":\n    \"enabled\": true\n    \"hosts\":\n    - \"grafana.127.0.0.1.nip.io\"\n    \"ingressClassName\": \"nginx\"\n    \"path\": \"/\"\n  \"nodeSelector\":\n    \"tier\": \"tools\"\n\"kubeStateMetrics\":\n  \"enabled\": false\n\"nodeExporter\":\n  \"enabled\": false\n\"prometheus\":\n  \"ingress\":\n    \"enabled\": true\n    \"hosts\":\n    - \"prometheus.127.0.0.1.nip.io\"\n    \"ingressClassName\": \"nginx\"\n    \"paths\":\n    - \"/\"\n  \"prometheusSpec\":\n    \"nodeSelector\":\n      \"tier\": \"tools\"\n    \"storageSpec\": {}\n\"prometheusOperator\":\n  \"enabled\": false\n"
+            ],
+            "verify": false,
+            "version": "82.14.1",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "helm_release.ingress_nginx",
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "loki",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "loki",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "loki",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "3.6.7",
+                "chart": "loki",
+                "first_deployed": 1774472993,
+                "last_deployed": 1774472993,
+                "name": "loki",
+                "namespace": "observability",
+                "notes": "***********************************************************************\n Welcome to Grafana Loki\n Chart version: 6.55.0\n Chart Name: loki\n Loki version: 3.6.7\n***********************************************************************\n\n** Please be patient while the chart is being deployed **\n\nTip:\n\n  Watch the deployment status using the command: kubectl get pods -w --namespace observability\n\nIf pods are taking too long to schedule make sure pod affinity can be fulfilled in the current cluster.\n\n***********************************************************************\nInstalled components:\n***********************************************************************\n* loki\n\nLoki has been deployed as a single binary.\nThis means a single pod is handling reads and writes. You can scale that pod vertically by adding more CPU and memory resources.\n\n\n***********************************************************************\nSending logs to Loki\n***********************************************************************\n\nYou can send logs from inside the cluster using the cluster DNS:\n\nhttp://loki.observability.svc.cluster.local:3100/loki/api/v1/push\n\nYou can test to send data from outside the cluster by port-forwarding the gateway to your local machine:\n\n  kubectl port-forward --namespace observability svc/loki 3100:3100 \u0026\n\nAnd then using http://127.0.0.1:3100/loki/api/v1/push URL as shown below:\n\n```\ncurl -H \"Content-Type: application/json\" -XPOST -s \"http://127.0.0.1:3100/loki/api/v1/push\"  \\\n--data-raw \"{\\\"streams\\\": [{\\\"stream\\\": {\\\"job\\\": \\\"test\\\"}, \\\"values\\\": [[\\\"$(date +%s)000000000\\\", \\\"fizzbuzz\\\"]]}]}\"\n```\n\nThen verify that Loki did receive the data using the following command:\n\n```\ncurl \"http://127.0.0.1:3100/loki/api/v1/query_range\" --data-urlencode 'query={job=\"test\"}' | jq .data.result\n```\n\n***********************************************************************\nConnecting Grafana to Loki\n***********************************************************************\n\nIf Grafana operates within the cluster, you'll set up a new Loki datasource by utilizing the following URL:\n\nhttp://loki.observability.svc.cluster.local:3100/\n",
+                "revision": 1,
+                "values": "{\"backend\":{\"replicas\":0},\"chunksCache\":{\"enabled\":false},\"deploymentMode\":\"SingleBinary\",\"gateway\":{\"enabled\":false},\"loki\":{\"auth_enabled\":false,\"commonConfig\":{\"replication_factor\":1},\"schemaConfig\":{\"configs\":[{\"from\":\"2024-01-01\",\"index\":{\"period\":\"24h\",\"prefix\":\"loki_index_\"},\"object_store\":\"filesystem\",\"schema\":\"v13\",\"store\":\"tsdb\"}]},\"storage\":{\"type\":\"filesystem\"}},\"lokiCanary\":{\"enabled\":false},\"read\":{\"replicas\":0},\"resultsCache\":{\"enabled\":false},\"singleBinary\":{\"nodeSelector\":{\"tier\":\"tools\"},\"replicas\":1},\"test\":{\"enabled\":false},\"write\":{\"replicas\":0}}",
+                "version": "6.55.0"
+              }
+            ],
+            "name": "loki",
+            "namespace": "observability",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "https://grafana.github.io/helm-charts",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": [
+              "\"backend\":\n  \"replicas\": 0\n\"chunksCache\":\n  \"enabled\": false\n\"deploymentMode\": \"SingleBinary\"\n\"gateway\":\n  \"enabled\": false\n\"loki\":\n  \"auth_enabled\": false\n  \"commonConfig\":\n    \"replication_factor\": 1\n  \"schemaConfig\":\n    \"configs\":\n    - \"from\": \"2024-01-01\"\n      \"index\":\n        \"period\": \"24h\"\n        \"prefix\": \"loki_index_\"\n      \"object_store\": \"filesystem\"\n      \"schema\": \"v13\"\n      \"store\": \"tsdb\"\n  \"storage\":\n    \"type\": \"filesystem\"\n\"lokiCanary\":\n  \"enabled\": false\n\"read\":\n  \"replicas\": 0\n\"resultsCache\":\n  \"enabled\": false\n\"singleBinary\":\n  \"nodeSelector\":\n    \"tier\": \"tools\"\n  \"replicas\": 1\n\"test\":\n  \"enabled\": false\n\"write\":\n  \"replicas\": 0\n"
+            ],
+            "verify": false,
+            "version": "6.55.0",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "minio",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "./minio",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "survivor-storage",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "latest",
+                "chart": "survivor-minio",
+                "first_deployed": 1774472993,
+                "last_deployed": 1774472993,
+                "name": "survivor-storage",
+                "namespace": "data",
+                "notes": "",
+                "revision": 1,
+                "values": "{\"auth\":{\"rootPassword\":\"survivor-storage-pw\",\"rootUser\":\"survivor-admin\"},\"extraEnvVars\":[{\"name\":\"MINIO_BROWSER_REDIRECT_URL\",\"value\":\"http://minio.127.0.0.1.nip.io\"},{\"name\":\"MINIO_SERVER_URL\",\"value\":\"http://survivor-storage.data.svc.cluster.local:9000\"}],\"image\":\"survivor-net/minio:latest\",\"nodeSelector\":{\"tier\":\"data\"}}",
+                "version": "0.1.0"
+              }
+            ],
+            "name": "survivor-storage",
+            "namespace": "data",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": null,
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": [
+              "\"auth\":\n  \"rootPassword\": \"survivor-storage-pw\"\n  \"rootUser\": \"survivor-admin\"\n\"extraEnvVars\":\n- \"name\": \"MINIO_BROWSER_REDIRECT_URL\"\n  \"value\": \"http://minio.127.0.0.1.nip.io\"\n- \"name\": \"MINIO_SERVER_URL\"\n  \"value\": \"http://survivor-storage.data.svc.cluster.local:9000\"\n\"image\": \"survivor-net/minio:latest\"\n\"nodeSelector\":\n  \"tier\": \"data\"\n"
+            ],
+            "verify": false,
+            "version": "0.1.0",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "null_resource.load_minio_image"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "postgresql",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "./postgresql-18.5.7.tgz",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "survivor-db",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "18.3.0",
+                "chart": "postgresql",
+                "first_deployed": 1774472993,
+                "last_deployed": 1774472993,
+                "name": "survivor-db",
+                "namespace": "data",
+                "notes": "\nCHART NAME: postgresql\nCHART VERSION: 18.5.7\nAPP VERSION: 18.3.0\n\n⚠ WARNING: Since August 28th, 2025, only a limited subset of images/charts are available for free.\n    Subscribe to Bitnami Secure Images to receive continued support and security updates.\n    More info at https://bitnami.com and https://github.com/bitnami/containers/issues/83267\n\n** Please be patient while the chart is being deployed **\n\nPostgreSQL can be accessed via port 5432 on the following DNS names from within your cluster:\n\n    survivor-db-postgresql.data.svc.cluster.local - Read/Write connection\n\nTo get the password for \"postgres\" run:\n\n    export POSTGRES_ADMIN_PASSWORD=$(kubectl get secret --namespace data survivor-db-postgresql -o jsonpath=\"{.data.postgres-password}\" | base64 -d)\n\nTo get the password for \"survivor\" run:\n\n    export POSTGRES_PASSWORD=$(kubectl get secret --namespace data survivor-db-postgresql -o jsonpath=\"{.data.password}\" | base64 -d)\n\nTo connect to your database run the following command:\n\n    kubectl run survivor-db-postgresql-client --rm --tty -i --restart='Never' --namespace data --image registry-1.docker.io/bitnami/postgresql:latest --env=\"PGPASSWORD=$POSTGRES_PASSWORD\" \\\n      --command -- psql --host survivor-db-postgresql -U survivor -d survivor -p 5432\n\n    \u003e NOTE: If you access the container using bash, make sure that you execute \"/opt/bitnami/scripts/postgresql/entrypoint.sh /bin/bash\" in order to avoid the error \"psql: local user with ID 1001} does not exist\"\n\nTo connect to your database from outside the cluster execute the following commands:\n\n    kubectl port-forward --namespace data svc/survivor-db-postgresql 5432:5432 \u0026\n    PGPASSWORD=\"$POSTGRES_PASSWORD\" psql --host 127.0.0.1 -U survivor -d survivor -p 5432\n\nWARNING: The configured password will be ignored on new installation in case when previous PostgreSQL release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue.\nWARNING: Rolling tag detected (bitnami/postgresql:latest), please note that it is strongly recommended to avoid using rolling tags in a production environment.\n+info https://techdocs.broadcom.com/us/en/vmware-tanzu/bitnami-secure-images/bitnami-secure-images/services/bsi-doc/apps-tutorials-understand-rolling-tags-containers-index.html\nWARNING: Rolling tag detected (bitnami/os-shell:latest), please note that it is strongly recommended to avoid using rolling tags in a production environment.\n+info https://techdocs.broadcom.com/us/en/vmware-tanzu/bitnami-secure-images/bitnami-secure-images/services/bsi-doc/apps-tutorials-understand-rolling-tags-containers-index.html\n\nWARNING: There are \"resources\" sections in the chart not set. Using \"resourcesPreset\" is not recommended for production. For production installations, please set the following values according to your workload needs:\n  - primary.resources\n  - readReplicas.resources\n+info https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/\n",
+                "revision": 1,
+                "values": "{\"auth\":{\"database\":\"survivor\",\"password\":\"survivor-pw\",\"postgresPassword\":\"survivor-db-pw\",\"username\":\"survivor\"},\"primary\":{\"nodeSelector\":{\"tier\":\"data\"},\"persistence\":{\"enabled\":false}}}",
+                "version": "18.5.7"
+              }
+            ],
+            "name": "survivor-db",
+            "namespace": "data",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": null,
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": [
+              "\"auth\":\n  \"database\": \"survivor\"\n  \"password\": \"survivor-pw\"\n  \"postgresPassword\": \"survivor-db-pw\"\n  \"username\": \"survivor\"\n\"primary\":\n  \"nodeSelector\":\n    \"tier\": \"data\"\n  \"persistence\":\n    \"enabled\": false\n"
+            ],
+            "verify": false,
+            "version": "18.5.7",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "promtail",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "promtail",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "promtail",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "3.5.1",
+                "chart": "promtail",
+                "first_deployed": 1774473120,
+                "last_deployed": 1774473120,
+                "name": "promtail",
+                "namespace": "observability",
+                "notes": "***********************************************************************\n Welcome to Grafana Promtail\n Chart version: 6.17.1\n Promtail version: 3.5.1\n***********************************************************************\n\nVerify the application is working by running these commands:\n* kubectl --namespace observability port-forward daemonset/promtail 3101\n* curl http://127.0.0.1:3101/metrics\n",
+                "revision": 1,
+                "values": "{\"config\":{\"clients\":[{\"url\":\"http://loki.observability.svc.cluster.local:3100/loki/api/v1/push\"}]},\"nodeSelector\":{\"tier\":\"tools\"}}",
+                "version": "6.17.1"
+              }
+            ],
+            "name": "promtail",
+            "namespace": "observability",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "https://grafana.github.io/helm-charts",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": [
+              "\"config\":\n  \"clients\":\n  - \"url\": \"http://loki.observability.svc.cluster.local:3100/loki/api/v1/push\"\n\"nodeSelector\":\n  \"tier\": \"tools\"\n"
+            ],
+            "verify": false,
+            "version": "6.17.1",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "helm_release.loki",
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "tempo",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "tempo",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "tempo",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "2.9.0",
+                "chart": "tempo",
+                "first_deployed": 1774472989,
+                "last_deployed": 1774472989,
+                "name": "tempo",
+                "namespace": "observability",
+                "notes": "",
+                "revision": 1,
+                "values": "{\"nodeSelector\":{\"tier\":\"tools\"},\"tempo\":{\"storage\":{\"trace\":{\"backend\":\"local\",\"local\":{\"path\":\"/var/tempo/traces\"}}}}}",
+                "version": "1.24.4"
+              }
+            ],
+            "name": "tempo",
+            "namespace": "observability",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "https://grafana.github.io/helm-charts",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": [
+              "\"nodeSelector\":\n  \"tier\": \"tools\"\n\"tempo\":\n  \"storage\":\n    \"trace\":\n      \"backend\": \"local\"\n      \"local\":\n        \"path\": \"/var/tempo/traces\"\n"
+            ],
+            "verify": false,
+            "version": "1.24.4",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubernetes_ingress_v1",
+      "name": "minio_ingress",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "data/minio-ingress",
+            "metadata": [
+              {
+                "annotations": {
+                  "nginx.ingress.kubernetes.io/cors-allow-credentials": "true",
+                  "nginx.ingress.kubernetes.io/cors-allow-methods": "PUT, GET, POST, OPTIONS, DELETE",
+                  "nginx.ingress.kubernetes.io/cors-allow-origin": "http://minio.127.0.0.1.nip.io, http://minio-api.127.0.0.1.nip.io",
+                  "nginx.ingress.kubernetes.io/enable-cors": "true",
+                  "nginx.ingress.kubernetes.io/proxy-body-size": "1024m",
+                  "nginx.ingress.kubernetes.io/proxy-http-version": "1.1",
+                  "nginx.ingress.kubernetes.io/proxy-read-timeout": "600",
+                  "nginx.ingress.kubernetes.io/proxy-send-timeout": "600",
+                  "nginx.ingress.kubernetes.io/ssl-redirect": "false"
+                },
+                "generate_name": "",
+                "generation": 1,
+                "labels": null,
+                "name": "minio-ingress",
+                "namespace": "data",
+                "resource_version": "1118",
+                "uid": "1b11a99a-7bff-4ecc-b1fc-e21a912f2ea4"
+              }
+            ],
+            "spec": [
+              {
+                "default_backend": [],
+                "ingress_class_name": "nginx",
+                "rule": [
+                  {
+                    "host": "minio.127.0.0.1.nip.io",
+                    "http": [
+                      {
+                        "path": [
+                          {
+                            "backend": [
+                              {
+                                "resource": [],
+                                "service": [
+                                  {
+                                    "name": "survivor-storage",
+                                    "port": [
+                                      {
+                                        "name": "",
+                                        "number": 9001
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ],
+                            "path": "/",
+                            "path_type": "Prefix"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "host": "minio-api.127.0.0.1.nip.io",
+                    "http": [
+                      {
+                        "path": [
+                          {
+                            "backend": [
+                              {
+                                "resource": [],
+                                "service": [
+                                  {
+                                    "name": "survivor-storage",
+                                    "port": [
+                                      {
+                                        "name": "",
+                                        "number": 9000
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ],
+                            "path": "/",
+                            "path_type": "Prefix"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "tls": []
+              }
+            ],
+            "status": [
+              {
+                "load_balancer": [
+                  {
+                    "ingress": []
+                  }
+                ]
+              }
+            ],
+            "timeouts": null,
+            "wait_for_load_balancer": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "helm_release.ingress_nginx",
+            "helm_release.minio",
+            "kind_cluster.survivor_net",
+            "null_resource.load_minio_image"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubernetes_namespace",
+      "name": "namespaces",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "index_key": "survivor-apps",
+          "schema_version": 0,
+          "attributes": {
+            "id": "survivor-apps",
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": {
+                  "env": "prod-local",
+                  "managed-by": "terraform"
+                },
+                "name": "survivor-apps",
+                "resource_version": "574",
+                "uid": "eb314f0d-53b1-4718-bdbe-74c196103ded"
+              }
+            ],
+            "timeouts": null,
+            "wait_for_default_service_account": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "load_minio_image",
+      "provider": "provider[\"registry.terraform.io/hashicorp/null\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "2545301390829702050",
+            "triggers": null
+          },
+          "sensitive_attributes": [],
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

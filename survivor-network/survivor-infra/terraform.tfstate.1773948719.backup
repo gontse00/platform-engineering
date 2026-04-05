@@ -1,0 +1,635 @@
+{
+  "version": 4,
+  "terraform_version": "1.5.7",
+  "serial": 12,
+  "lineage": "a467849a-663b-4e30-ba3d-f050157212b2",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "ingress_nginx",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": true,
+            "chart": "ingress-nginx",
+            "cleanup_on_fail": true,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "ingress-nginx",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "1.15.0",
+                "chart": "ingress-nginx",
+                "first_deployed": 1773947594,
+                "last_deployed": 1773947594,
+                "name": "ingress-nginx",
+                "namespace": "kube-system",
+                "notes": "The ingress-nginx controller has been installed.\nGet the application URL by running these commands:\n  export HTTP_NODE_PORT=$(kubectl get service --namespace kube-system ingress-nginx-controller --output jsonpath=\"{.spec.ports[0].nodePort}\")\n  export HTTPS_NODE_PORT=$(kubectl get service --namespace kube-system ingress-nginx-controller --output jsonpath=\"{.spec.ports[1].nodePort}\")\n  export NODE_IP=\"$(kubectl get nodes --output jsonpath=\"{.items[0].status.addresses[1].address}\")\"\n\n  echo \"Visit http://${NODE_IP}:${HTTP_NODE_PORT} to access your application via HTTP.\"\n  echo \"Visit https://${NODE_IP}:${HTTPS_NODE_PORT} to access your application via HTTPS.\"\n\nAn example Ingress that makes use of the controller:\n  apiVersion: networking.k8s.io/v1\n  kind: Ingress\n  metadata:\n    name: example\n    namespace: foo\n  spec:\n    ingressClassName: nginx\n    rules:\n      - host: www.example.com\n        http:\n          paths:\n            - pathType: Prefix\n              backend:\n                service:\n                  name: exampleService\n                  port:\n                    number: 80\n              path: /\n    # This section is only required if TLS is to be enabled for the Ingress\n    tls:\n      - hosts:\n        - www.example.com\n        secretName: example-tls\n\nIf TLS is enabled for the Ingress, a Secret containing the certificate and key must also be provided:\n\n  apiVersion: v1\n  kind: Secret\n  metadata:\n    name: example-tls\n    namespace: foo\n  data:\n    tls.crt: \u003cbase64 encoded cert\u003e\n    tls.key: \u003cbase64 encoded key\u003e\n  type: kubernetes.io/tls\n",
+                "revision": 1,
+                "values": "{\"controller\":{\"replicaCount\":1,\"service\":{\"type\":\"NodePort\"},\"updateStrategy\":{\"type\":\"Recreate\"}}}",
+                "version": "4.15.0"
+              }
+            ],
+            "name": "ingress-nginx",
+            "namespace": "kube-system",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "https://kubernetes.github.io/ingress-nginx",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 600,
+            "upgrade_install": null,
+            "values": [
+              "controller:\n  service:\n    type: NodePort\n  updateStrategy:\n    type: Recreate\n  replicaCount: 1\n"
+            ],
+            "verify": false,
+            "version": "4.15.0",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "minio",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "status": "tainted",
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "minio",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "survivor-storage",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "2025.7.23",
+                "chart": "minio",
+                "first_deployed": 1773947596,
+                "last_deployed": 1773947596,
+                "name": "survivor-storage",
+                "namespace": "data",
+                "notes": "CHART NAME: minio\nCHART VERSION: 17.0.21\nAPP VERSION: 2025.7.23\n\n⚠ WARNING: Since August 28th, 2025, only a limited subset of images/charts are available for free.\n    Subscribe to Bitnami Secure Images to receive continued support and security updates.\n    More info at https://bitnami.com and https://github.com/bitnami/containers/issues/83267\n\n** Please be patient while the chart is being deployed **\n\nMinio(R) can be accessed via port 9000 on the following DNS name from within your cluster:\n\n   survivor-storage-minio.data.svc.cluster.local\n\nTo get your credentials run:\n\n   export ROOT_USER=$(kubectl get secret --namespace data minio-auth -o jsonpath=\"{.data.root-user}\" | base64 -d)\n   export ROOT_PASSWORD=$(kubectl get secret --namespace data minio-auth -o jsonpath=\"{.data.root-password}\" | base64 -d)\n\nTo connect to your Minio(R) server using a client:\n\n- Run a Minio(R) Client pod and append the desired command (e.g. 'admin info'):\n\n   kubectl run --namespace data survivor-storage-minio-client \\\n     --rm --tty -i --restart='Never' \\\n     --env MINIO_SERVER_ROOT_USER=$ROOT_USER \\\n     --env MINIO_SERVER_ROOT_PASSWORD=$ROOT_PASSWORD \\\n     --env MINIO_SERVER_HOST=survivor-storage-minio \\\n     --image docker.io/bitnami/minio-client:2025.7.21-debian-12-r2 -- admin info minio\n\nTo access the Minio(R) Console:\n\n- Get the Minio(R) Console URL:\n\n   echo \"Minio(R) Console URL: http://127.0.0.1:9090\"\n   kubectl port-forward --namespace data svc/survivor-storage-minio-console 9090:9090\nWARNING: Rolling tag detected (bitnami/minio:latest), please note that it is strongly recommended to avoid using rolling tags in a production environment.\n+info https://techdocs.broadcom.com/us/en/vmware-tanzu/application-catalog/tanzu-application-catalog/services/tac-doc/apps-tutorials-understand-rolling-tags-containers-index.html\n\nWARNING: There are \"resources\" sections in the chart not set. Using \"resourcesPreset\" is not recommended for production. For production installations, please set the following values according to your workload needs:\n  - resources\n  - console.resources\n+info https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/\n\n⚠ SECURITY WARNING: Original containers have been substituted. This Helm chart was designed, tested, and validated on multiple platforms using a specific set of Bitnami and Tanzu Application Catalog containers. Substituting other containers is likely to cause degraded security and performance, broken chart features, and missing environment variables.\n\nSubstituted images detected:\n  - docker.io/bitnami/minio:latest\n\n⚠ WARNING: Original containers have been retagged. Please note this Helm chart was tested, and validated on multiple platforms using a specific set of Bitnami and Bitnami Secure Images containers. Substituting original image tags could cause unexpected behavior.\n\nRetagged images:\n  - docker.io/bitnami/minio:latest\n",
+                "revision": 1,
+                "values": "{\"auth\":{\"existingSecret\":\"minio-auth\"},\"console\":{\"enabled\":true},\"defaultBuckets\":[\"survivor-evidence\",\"ai-artifacts\"],\"image\":{\"tag\":\"latest\"},\"nodeSelector\":{\"tier\":\"data\"},\"primary\":{\"resources\":{\"limits\":{\"cpu\":\"500m\",\"memory\":\"1Gi\"},\"requests\":{\"memory\":\"512Mi\"}}},\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"tier\",\"value\":\"data\"}]}",
+                "version": "17.0.21"
+              }
+            ],
+            "name": "survivor-storage",
+            "namespace": "data",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "oci://registry-1.docker.io/bitnamicharts",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "failed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": [
+              "image:\n  tag: latest\nauth:\n  existingSecret: minio-auth\ndefaultBuckets:\n  - survivor-evidence\n  - ai-artifacts\nnodeSelector:\n  tier: data\ntolerations:\n  - key: tier\n    value: data\n    effect: NoSchedule\nprimary:\n  resources:\n    requests:\n      memory: 512Mi\n    limits:\n      memory: 1Gi\n      cpu: 500m\nconsole:\n  enabled: true\n"
+            ],
+            "verify": false,
+            "version": "17.0.21",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces",
+            "kubernetes_secret.minio_auth"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "helm_release",
+      "name": "postgresql",
+      "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "atomic": false,
+            "chart": "postgresql",
+            "cleanup_on_fail": false,
+            "create_namespace": false,
+            "dependency_update": false,
+            "description": null,
+            "devel": null,
+            "disable_crd_hooks": false,
+            "disable_openapi_validation": false,
+            "disable_webhooks": false,
+            "force_update": false,
+            "id": "survivor-db",
+            "keyring": null,
+            "lint": false,
+            "manifest": null,
+            "max_history": 0,
+            "metadata": [
+              {
+                "app_version": "18.3.0",
+                "chart": "postgresql",
+                "first_deployed": 1773947597,
+                "last_deployed": 1773947597,
+                "name": "survivor-db",
+                "namespace": "data",
+                "notes": "\nCHART NAME: postgresql\nCHART VERSION: 18.5.7\nAPP VERSION: 18.3.0\n\n⚠ WARNING: Since August 28th, 2025, only a limited subset of images/charts are available for free.\n    Subscribe to Bitnami Secure Images to receive continued support and security updates.\n    More info at https://bitnami.com and https://github.com/bitnami/containers/issues/83267\n\n** Please be patient while the chart is being deployed **\n\nWARNING: PostgreSQL has been configured without authentication, this is not recommended for production environments.\n\nPostgreSQL can be accessed via port 5432 on the following DNS names from within your cluster:\n\n    survivor-db-postgresql.data.svc.cluster.local - Read/Write connection\n\nTo get the password for \"postgres\" run:\n\n    export POSTGRES_PASSWORD=$(kubectl get secret --namespace data postgres-auth -o jsonpath=\"{.data.postgres-password}\" | base64 -d)\n\nTo connect to your database run the following command:\n\n    kubectl run survivor-db-postgresql-client --rm --tty -i --restart='Never' --namespace data --image registry-1.docker.io/bitnami/postgresql:latest \\\n      --command -- psql --host survivor-db-postgresql -d postgres -p 5432\n\n    \u003e NOTE: If you access the container using bash, make sure that you execute \"/opt/bitnami/scripts/postgresql/entrypoint.sh /bin/bash\" in order to avoid the error \"psql: local user with ID 1001} does not exist\"\n\nTo connect to your database from outside the cluster execute the following commands:\n\n    kubectl port-forward --namespace data svc/survivor-db-postgresql 5432:5432 \u0026\n    psql --host 127.0.0.1 -d postgres -p 5432\n\nWARNING: The configured password will be ignored on new installation in case when previous PostgreSQL release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue.\nWARNING: Rolling tag detected (bitnami/postgresql:latest), please note that it is strongly recommended to avoid using rolling tags in a production environment.\n+info https://techdocs.broadcom.com/us/en/vmware-tanzu/bitnami-secure-images/bitnami-secure-images/services/bsi-doc/apps-tutorials-understand-rolling-tags-containers-index.html\nWARNING: Rolling tag detected (bitnami/os-shell:latest), please note that it is strongly recommended to avoid using rolling tags in a production environment.\n+info https://techdocs.broadcom.com/us/en/vmware-tanzu/bitnami-secure-images/bitnami-secure-images/services/bsi-doc/apps-tutorials-understand-rolling-tags-containers-index.html\n\nWARNING: There are \"resources\" sections in the chart not set. Using \"resourcesPreset\" is not recommended for production. For production installations, please set the following values according to your workload needs:\n  - primary.resources\n  - readReplicas.resources\n+info https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/\n",
+                "revision": 1,
+                "values": "{\"architecture\":\"standalone\",\"global\":{\"postgresql\":{\"auth\":{\"existingSecret\":\"postgres-auth\"}}},\"image\":{\"tag\":\"latest\"},\"primary\":{\"nodeSelector\":{\"tier\":\"data\"},\"persistence\":{\"size\":\"20Gi\"},\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"tier\",\"value\":\"data\"}]}}",
+                "version": "18.5.7"
+              }
+            ],
+            "name": "survivor-db",
+            "namespace": "data",
+            "pass_credentials": false,
+            "postrender": [],
+            "recreate_pods": false,
+            "render_subchart_notes": true,
+            "replace": false,
+            "repository": "oci://registry-1.docker.io/bitnamicharts",
+            "repository_ca_file": null,
+            "repository_cert_file": null,
+            "repository_key_file": null,
+            "repository_password": null,
+            "repository_username": null,
+            "reset_values": false,
+            "reuse_values": false,
+            "set": [
+              {
+                "name": "architecture",
+                "type": "",
+                "value": "standalone"
+              },
+              {
+                "name": "global.postgresql.auth.existingSecret",
+                "type": "",
+                "value": "postgres-auth"
+              },
+              {
+                "name": "image.tag",
+                "type": "",
+                "value": "latest"
+              },
+              {
+                "name": "primary.nodeSelector.tier",
+                "type": "",
+                "value": "data"
+              },
+              {
+                "name": "primary.persistence.size",
+                "type": "",
+                "value": "20Gi"
+              },
+              {
+                "name": "primary.tolerations[0].effect",
+                "type": "",
+                "value": "NoSchedule"
+              },
+              {
+                "name": "primary.tolerations[0].key",
+                "type": "",
+                "value": "tier"
+              },
+              {
+                "name": "primary.tolerations[0].value",
+                "type": "",
+                "value": "data"
+              }
+            ],
+            "set_list": [],
+            "set_sensitive": [],
+            "skip_crds": false,
+            "status": "deployed",
+            "timeout": 300,
+            "upgrade_install": null,
+            "values": null,
+            "verify": false,
+            "version": "18.5.7",
+            "wait": true,
+            "wait_for_jobs": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces",
+            "kubernetes_secret.postgres_auth"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kind_cluster",
+      "name": "survivor_net",
+      "provider": "provider[\"registry.terraform.io/tehcyx/kind\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "client_certificate": "-----BEGIN CERTIFICATE-----\nMIIDKTCCAhGgAwIBAgIIQyGGNKM6pIowDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjAzMTkxOTA3MzBaFw0yNzAzMTkxOTEyMzBaMDwx\nHzAdBgNVBAoTFmt1YmVhZG06Y2x1c3Rlci1hZG1pbnMxGTAXBgNVBAMTEGt1YmVy\nbmV0ZXMtYWRtaW4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDG23F5\nkyE24vU9u2tnnfJYpEHnDi8wdlcNIHf08fX67C5wyCaU3u9YjqWSUg2XhA50zYO6\nTQCx6RUhfeS9isl1fRNXurHX8YvkorQougpgRkUE4JsZVciBu0+sVhtlBygv3LJ8\n1hKAhGKskBRGx2aDrhRKSEMUDUWEYP+av2vyr4Cbqly6O64FN50AQ7zuohMZCTvB\n+7847O/FNRBVRiG0c357aT/wuS8XOS5erpbMeHBs6lPUUmURv4EikgfDjBcwsGo1\nM1zQAMSN7mf6A79QptJyh2ijGnIrqWs3zPX47y2vHLBoTouGMDG4eO3i8bfEIU8W\nmvjDSDsEUgQ4PIT/AgMBAAGjVjBUMA4GA1UdDwEB/wQEAwIFoDATBgNVHSUEDDAK\nBggrBgEFBQcDAjAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFCCgp59eWhDmxyiA\n9H5+Htb1sBEQMA0GCSqGSIb3DQEBCwUAA4IBAQCxG5qdQKaCZOda6ws5gzbKHtOn\nxsZb49gHfLvfSdakEWMB/MHj0DV5CfSy0PYhdRQL20qSrxWy7Ka56V7YtivaR0t0\nGWjyXoEJi1TDjjZUMqylm1kyJb9lBu9d3spUJ9GM1co8top+2h0eyb8kXPTrsDIi\nlu5wGXmzcAO1DR0Lc2REW5dkBlg0CBqps5IDcpZ9TRaW8ncjcPEALZDN+l3EXJzm\n9GPDYwVtEJLeo+gOC+rfLjDTVvqvYm3uGW0aVQ5Ih+UPH5Fu/Hi6Et19sx+E6dmy\npT6YtkepnFewerOY+DCnNtmY2TWZH1aFEvkbp+s6Pr5rnALyNS62G58rZZxW\n-----END CERTIFICATE-----\n",
+            "client_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEAxttxeZMhNuL1PbtrZ53yWKRB5w4vMHZXDSB39PH1+uwucMgm\nlN7vWI6lklINl4QOdM2Duk0AsekVIX3kvYrJdX0TV7qx1/GL5KK0KLoKYEZFBOCb\nGVXIgbtPrFYbZQcoL9yyfNYSgIRirJAURsdmg64USkhDFA1FhGD/mr9r8q+Am6pc\nujuuBTedAEO87qITGQk7wfu/OOzvxTUQVUYhtHN+e2k/8LkvFzkuXq6WzHhwbOpT\n1FJlEb+BIpIHw4wXMLBqNTNc0ADEje5n+gO/UKbScodooxpyK6lrN8z1+O8trxyw\naE6LhjAxuHjt4vG3xCFPFpr4w0g7BFIEODyE/wIDAQABAoIBAAw78/9GzgRSckQa\nA8GcNgy+Dk/oz35ryW9FUBwBxuBpJ3JI3hbKoG8SV51o7u0jcsA85J3RnvlTHbmx\nxSDkKQDRcR80nTxr3+9xEyRuTbUenaBvMRud63gPzhcMNSNCDXbkXRbRFNJTUr7L\nHnQ8UFJJo3XufDH/nwdF8HPU0w9bIPcBmfP3LozZQ5SrwpdwS/9cARYmCGcciETB\nXiS7EnMtNrGXulJWlYMoZAGsa1ZaudOQQ/GuAYCWo+75BqOdmLmOSRyhZ1Bymt8e\n2M8Cy83+/S+YGV5LSSwlqSn8SmHo34aN1SFW3djnxmJWEt3Hhs+lbuIEH09c1f15\nfrcmdgECgYEA0T7Zmn2SfQioX4pub9eJRJfNhzWsSuMJVmD6mxWa9geIo1erY/+S\nfFb0dKsAq4If++9PILhdAI+Eo0Ta6SlZlekrde2vkbM/6S6rjWU3KxmaqDIobohR\nhtIlCfARcPLFxFFEmH/wMr2fU556+sGkJpfTNtDYZv1asWL1Ya1bk0MCgYEA80pd\n53iGfe/fd38Elges5+xoYBgMf7EBGU9Mj0Yx02fcAdGOX13KxW8huxg5SJMaea26\nNwyYvwK6lF3oin+EAddUBd86ZmxgpWvZtyllSgGJbF+HCvfzHKfQO7ch2HCfKWcn\nmwIFAGq/pJIXBCfBFcwJG9zvLwMf/c0Tu+X6hZUCgYEAvAugoZ9yU53BO0N8JlTs\nTtGh6n5I3XAWByPWdCNBhROWLz1tkMuwyL+Yp3S6gGfL+KzDTuOA6S0RhW0u0tXP\nZdMLtMqruuP9bsD7eXHZ14kGHVweS9+EbQZUNQ8jjX8QTnK+k9J+egtBsXM+kDYQ\nIILXVW7w2/WaWMpXPbX/E2MCgYEAiS7TyGNjoruRTDYpBdgKHTRmnlixI4dRUU4v\no1I3YjdcDQJ2vzuJzM4fPPopwsx/z0Cwkb3em0YUovhY2U+Rxd//FtiKe5p83In1\n15vV62b2cE9lPEAXq37Mof9fbEYE2Tm7UWJQI64NpeRiagtoirvkHvvzOpUOgvQS\nPo8tNgkCgYAxJRnYQNfK0IAxpL/6RZLjUdy0FK9GZ2ltVuuOhFEC4vB9M0lbI4x8\n78kzZMMpID2l4PROpoZ1lXVyRmnBh8fXy5NK3quwUswi+vgoxWKu3WYVgnQ8VhnR\nX3ZQWVAjZpG94Z2pH2sEhcLdNiBYgKcugEquuWOeO/d8s5dWwahNWA==\n-----END RSA PRIVATE KEY-----\n",
+            "cluster_ca_certificate": "-----BEGIN CERTIFICATE-----\nMIIDBTCCAe2gAwIBAgIIHBzkfe3R5hcwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjAzMTkxOTA3MzBaFw0zNjAzMTYxOTEyMzBaMBUx\nEzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\nAoIBAQDrrQxy+GzzLrj/hSXs6oyJL8+ywonG7qort/xfWIORfXFIetP7zzzV6eDD\noKHmrYEobMGrqYHmPWusKPpR8qbYeeSm4o8mlsaMmhQmbEQQ09W96yj0yBV43x/N\nGrdVYSOShWiAPu0jPEOlUD++yBXqTD/wD+RWXYbYVJqF6AS4x5EhS3/YQCWzIrd+\nnb9CuH6DCw9udd9q8eQliYQJXFLXR3yhgFjoOPNeqNKVgeYEQtumamD0NoFSyXmN\nPRRfcKVy6nmeA8lP2JFxovfIwJI90n0d42CzSh1nHkiy5T/ocZM0nWtJPv5XTwzu\nUuiUv6E3WNapZ/8BHgDhByStgEwRAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQgoKefXloQ5scogPR+fh7W9bAREDAV\nBgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQAXjxJUhaVV\n2yq22X6xhNMEAKOpoHpC4nwOBUbM9fVVjd+PZNvlcR30RPHnQZe/Lks0w9s5uWHJ\njbuIRsCAUlBR2mlSddzsNGoT/DDAvgRh8nCE/n09Vsv+iLb0qRdKYoOfXeyXUGuP\noctLE4CxVU2GgECfLgQfxD3J320OKfPDp7Khk5nZyWeOTJPvuYjSTs36vh0i+XHW\nEriFtDbqfP8z7lVZmaONCe/0HMFnLddFbT8Ms01052as8lABiqXlOCUsSVaGshBX\nIV8QNGiKey1xwocPueTnYu+lB2PZX70tLAQ7jE/k6euIFBO05KR3OYU0Zmred6OB\nbLnfKprBEDTP\n-----END CERTIFICATE-----\n",
+            "completed": true,
+            "endpoint": "https://127.0.0.1:58474",
+            "id": "survivor-net-",
+            "kind_config": [
+              {
+                "api_version": "kind.x-k8s.io/v1alpha4",
+                "containerd_config_patches": null,
+                "feature_gates": null,
+                "kind": "Cluster",
+                "networking": [],
+                "node": [
+                  {
+                    "extra_mounts": [],
+                    "extra_port_mappings": [],
+                    "image": "kindest/node:v1.35.0",
+                    "kubeadm_config_patches": null,
+                    "labels": null,
+                    "role": "control-plane"
+                  },
+                  {
+                    "extra_mounts": [],
+                    "extra_port_mappings": [],
+                    "image": "kindest/node:v1.35.0",
+                    "kubeadm_config_patches": [
+                      "kind: JoinConfiguration\nnodeRegistration:\n  kubeletExtraArgs:\n    node-labels: \"tier=data\"\n    register-with-taints: \"tier=data:NoSchedule\"\n"
+                    ],
+                    "labels": null,
+                    "role": "worker"
+                  },
+                  {
+                    "extra_mounts": [],
+                    "extra_port_mappings": [],
+                    "image": "kindest/node:v1.35.0",
+                    "kubeadm_config_patches": [
+                      "kind: JoinConfiguration\nnodeRegistration:\n  kubeletExtraArgs:\n    node-labels: \"tier=compute\"\n    register-with-taints: \"tier=compute:NoSchedule\"\n"
+                    ],
+                    "labels": null,
+                    "role": "worker"
+                  },
+                  {
+                    "extra_mounts": [],
+                    "extra_port_mappings": [
+                      {
+                        "container_port": 80,
+                        "host_port": 80,
+                        "listen_address": "",
+                        "protocol": ""
+                      },
+                      {
+                        "container_port": 443,
+                        "host_port": 443,
+                        "listen_address": "",
+                        "protocol": ""
+                      }
+                    ],
+                    "image": "kindest/node:v1.35.0",
+                    "kubeadm_config_patches": [
+                      "kind: JoinConfiguration\nnodeRegistration:\n  kubeletExtraArgs:\n    node-labels: \"ingress-ready=true\"\n"
+                    ],
+                    "labels": null,
+                    "role": "worker"
+                  }
+                ],
+                "runtime_config": null
+              }
+            ],
+            "kubeconfig": "apiVersion: v1\nclusters:\n- cluster:\n    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJSEJ6a2ZlM1I1aGN3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TmpBek1Ua3hPVEEzTXpCYUZ3MHpOakF6TVRZeE9URXlNekJhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURyclF4eStHenpMcmovaFNYczZveUpMOCt5d29uRzdxb3J0L3hmV0lPUmZYRklldFA3enp6VjZlREQKb0tIbXJZRW9iTUdycVlIbVBXdXNLUHBSOHFiWWVlU200bzhtbHNhTW1oUW1iRVFRMDlXOTZ5ajB5QlY0M3gvTgpHcmRWWVNPU2hXaUFQdTBqUEVPbFVEKyt5QlhxVEQvd0QrUldYWWJZVkpxRjZBUzR4NUVoUzMvWVFDV3pJcmQrCm5iOUN1SDZEQ3c5dWRkOXE4ZVFsaVlRSlhGTFhSM3loZ0Zqb09QTmVxTktWZ2VZRVF0dW1hbUQwTm9GU3lYbU4KUFJSZmNLVnk2bm1lQThsUDJKRnhvdmZJd0pJOTBuMGQ0MkN6U2gxbkhraXk1VC9vY1pNMG5XdEpQdjVYVHd6dQpVdWlVdjZFM1dOYXBaLzhCSGdEaEJ5U3RnRXdSQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJRZ29LZWZYbG9RNXNjb2dQUitmaDdXOWJBUkVEQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQVhqeEpVaGFWVgoyeXEyMlg2eGhOTUVBS09wb0hwQzRud09CVWJNOWZWVmpkK1BaTnZsY1IzMFJQSG5RWmUvTGtzMHc5czV1V0hKCmpidUlSc0NBVWxCUjJtbFNkZHpzTkdvVC9EREF2Z1JoOG5DRS9uMDlWc3YraUxiMHFSZEtZb09mWGV5WFVHdVAKb2N0TEU0Q3hWVTJHZ0VDZkxnUWZ4RDNKMzIwT0tmUERwN0toazVuWnlXZU9USlB2dVlqU1RzMzZ2aDBpK1hIVwpFcmlGdERicWZQOHo3bFZabWFPTkNlLzBITUZuTGRkRmJUOE1zMDEwNTJhczhsQUJpcVhsT0NVc1NWYUdzaEJYCklWOFFOR2lLZXkxeHdvY1B1ZVRuWXUrbEIyUFpYNzB0TEFRN2pFL2s2ZXVJRkJPMDVLUjNPWVUwWm1yZWQ2T0IKYkxuZktwckJFRFRQCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K\n    server: https://127.0.0.1:58474\n  name: kind-survivor-net\ncontexts:\n- context:\n    cluster: kind-survivor-net\n    user: kind-survivor-net\n  name: kind-survivor-net\ncurrent-context: kind-survivor-net\nkind: Config\nusers:\n- name: kind-survivor-net\n  user:\n    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURLVENDQWhHZ0F3SUJBZ0lJUXlHR05LTTZwSW93RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TmpBek1Ua3hPVEEzTXpCYUZ3MHlOekF6TVRreE9URXlNekJhTUR3eApIekFkQmdOVkJBb1RGbXQxWW1WaFpHMDZZMngxYzNSbGNpMWhaRzFwYm5NeEdUQVhCZ05WQkFNVEVHdDFZbVZ5CmJtVjBaWE10WVdSdGFXNHdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFERzIzRjUKa3lFMjR2VTl1MnRubmZKWXBFSG5EaTh3ZGxjTklIZjA4Zlg2N0M1d3lDYVUzdTlZanFXU1VnMlhoQTUwellPNgpUUUN4NlJVaGZlUzlpc2wxZlJOWHVySFg4WXZrb3JRb3VncGdSa1VFNEpzWlZjaUJ1MCtzVmh0bEJ5Z3YzTEo4CjFoS0FoR0tza0JSR3gyYURyaFJLU0VNVURVV0VZUCthdjJ2eXI0Q2JxbHk2TzY0Rk41MEFRN3p1b2hNWkNUdkIKKzc4NDdPL0ZOUkJWUmlHMGMzNTdhVC93dVM4WE9TNWVycGJNZUhCczZsUFVVbVVSdjRFaWtnZkRqQmN3c0dvMQpNMXpRQU1TTjdtZjZBNzlRcHRKeWgyaWpHbklycVdzM3pQWDQ3eTJ2SExCb1RvdUdNREc0ZU8zaThiZkVJVThXCm12akRTRHNFVWdRNFBJVC9BZ01CQUFHalZqQlVNQTRHQTFVZER3RUIvd1FFQXdJRm9EQVRCZ05WSFNVRUREQUsKQmdnckJnRUZCUWNEQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZEl3UVlNQmFBRkNDZ3A1OWVXaERteHlpQQo5SDUrSHRiMXNCRVFNQTBHQ1NxR1NJYjNEUUVCQ3dVQUE0SUJBUUN4RzVxZFFLYUNaT2RhNndzNWd6YktIdE9uCnhzWmI0OWdIZkx2ZlNkYWtFV01CL01IajBEVjVDZlN5MFBZaGRSUUwyMHFTcnhXeTdLYTU2VjdZdGl2YVIwdDAKR1dqeVhvRUppMVREampaVU1xeWxtMWt5SmI5bEJ1OWQzc3BVSjlHTTFjbzh0b3ArMmgwZXliOGtYUFRyc0RJaQpsdTV3R1htemNBTzFEUjBMYzJSRVc1ZGtCbGcwQ0JxcHM1SURjcFo5VFJhVzhuY2pjUEVBTFpETitsM0VYSnptCjlHUERZd1Z0RUpMZW8rZ09DK3JmTGpEVFZ2cXZZbTN1R1cwYVZRNUloK1VQSDVGdS9IaTZFdDE5c3grRTZkbXkKcFQ2WXRrZXBuRmV3ZXJPWStEQ25OdG1ZMlRXWkgxYUZFdmticCtzNlByNXJuQUx5TlM2Mkc1OHJaWnhXCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K\n    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBeHR0eGVaTWhOdUwxUGJ0clo1M3lXS1JCNXc0dk1IWlhEU0IzOVBIMSt1d3VjTWdtCmxON3ZXSTZsa2xJTmw0UU9kTTJEdWswQXNla1ZJWDNrdllySmRYMFRWN3F4MS9HTDVLSzBLTG9LWUVaRkJPQ2IKR1ZYSWdidFByRlliWlFjb0w5eXlmTllTZ0lSaXJKQVVSc2RtZzY0VVNraERGQTFGaEdEL21yOXI4cStBbTZwYwp1anV1QlRlZEFFTzg3cUlUR1FrN3dmdS9PT3p2eFRVUVZVWWh0SE4rZTJrLzhMa3ZGemt1WHE2V3pIaHdiT3BUCjFGSmxFYitCSXBJSHc0d1hNTEJxTlROYzBBREVqZTVuK2dPL1VLYlNjb2Rvb3hweUs2bHJOOHoxK084dHJ4eXcKYUU2TGhqQXh1SGp0NHZHM3hDRlBGcHI0dzBnN0JGSUVPRHlFL3dJREFRQUJBb0lCQUF3NzgvOUd6Z1JTY2tRYQpBOEdjTmd5K0RrL296MzVyeVc5RlVCd0J4dUJwSjNKSTNoYktvRzhTVjUxbzd1MGpjc0E4NUozUm52bFRIYm14CnhTRGtLUURSY1I4MG5UeHIzKzl4RXlSdVRiVWVuYUJ2TVJ1ZDYzZ1B6aGNNTlNOQ0RYYmtYUmJSRk5KVFVyN0wKSG5ROFVGSkpvM1h1ZkRIL253ZEY4SFBVMHc5YklQY0JtZlAzTG96WlE1U3J3cGR3Uy85Y0FSWW1DR2NjaUVUQgpYaVM3RW5NdE5yR1h1bEpXbFlNb1pBR3NhMVphdWRPUVEvR3VBWUNXbys3NUJxT2RtTG1PU1J5aFoxQnltdDhlCjJNOEN5ODMrL1MrWUdWNUxTU3dscVNuOFNtSG8zNGFOMVNGVzNkam54bUpXRXQzSGhzK2xidUlFSDA5YzFmMTUKZnJjbWRnRUNnWUVBMFQ3Wm1uMlNmUWlvWDRwdWI5ZUpSSmZOaHpXc1N1TUpWbUQ2bXhXYTlnZUlvMWVyWS8rUwpmRmIwZEtzQXE0SWYrKzlQSUxoZEFJK0VvMFRhNlNsWmxla3JkZTJ2a2JNLzZTNnJqV1UzS3htYXFESW9ib2hSCmh0SWxDZkFSY1BMRnhGRkVtSC93TXIyZlU1NTYrc0drSnBmVE50RFladjFhc1dMMVlhMWJrME1DZ1lFQTgwcGQKNTNpR2ZlL2ZkMzhFbGdlczUreG9ZQmdNZjdFQkdVOU1qMFl4MDJmY0FkR09YMTNLeFc4aHV4ZzVTSk1hZWEyNgpOd3lZdndLNmxGM29pbitFQWRkVUJkODZabXhncFd2WnR5bGxTZ0dKYkYrSEN2ZnpIS2ZRTzdjaDJIQ2ZLV2NuCm13SUZBR3EvcEpJWEJDZkJGY3dKRzl6dkx3TWYvYzBUdStYNmhaVUNnWUVBdkF1Z29aOXlVNTNCTzBOOEpsVHMKVHRHaDZuNUkzWEFXQnlQV2RDTkJoUk9XTHoxdGtNdXd5TCtZcDNTNmdHZkwrS3pEVHVPQTZTMFJoVzB1MHRYUApaZE1MdE1xcnV1UDlic0Q3ZVhIWjE0a0dIVndlUzkrRWJRWlVOUThqalg4UVRuSytrOUorZWd0QnNYTStrRFlRCklJTFhWVzd3Mi9XYVdNcFhQYlgvRTJNQ2dZRUFpUzdUeUdOam9ydVJURFlwQmRnS0hUUm1ubGl4STRkUlVVNHYKbzFJM1lqZGNEUUoydnp1SnpNNGZQUG9wd3N4L3owQ3drYjNlbTBZVW92aFkyVStSeGQvL0Z0aUtlNXA4M0luMQoxNXZWNjJiMmNFOWxQRUFYcTM3TW9mOWZiRVlFMlRtN1VXSlFJNjROcGVSaWFndG9pcnZrSHZ2ek9wVU9ndlFTClBvOHROZ2tDZ1lBeEpSbllRTmZLMElBeHBMLzZSWkxqVWR5MEZLOUdaMmx0VnV1T2hGRUM0dkI5TTBsYkk0eDgKNzhrelpNTXBJRDJsNFBST3BvWjFsWFZ5Um1uQmg4Zlh5NU5LM3F1d1Vzd2krdmdveFdLdTNXWVZnblE4VmhuUgpYM1pRV1ZBalpwRzk0WjJwSDJzRWhjTGROaUJZZ0tjdWdFcXV1V09lTy9kOHM1ZFd3YWhOV0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=\n",
+            "kubeconfig_path": "/Users/F5371961/platform-engineering/survivor-network/survivor-infra/survivor-net-config",
+            "name": "survivor-net",
+            "node_image": null,
+            "timeouts": null,
+            "wait_for_ready": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjMwMDAwMDAwMDAwMH19"
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubernetes_ingress_v1",
+      "name": "minio_console_ingress",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "kubernetes_namespace",
+      "name": "namespaces",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "index_key": "argo",
+          "schema_version": 0,
+          "attributes": {
+            "id": "argo",
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": {
+                  "env": "prod-local",
+                  "managed-by": "terraform"
+                },
+                "name": "argo",
+                "resource_version": "637",
+                "uid": "5b5fa522-0532-4c07-ba61-75a096c35f5f"
+              }
+            ],
+            "timeouts": null,
+            "wait_for_default_service_account": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        },
+        {
+          "index_key": "data",
+          "schema_version": 0,
+          "attributes": {
+            "id": "data",
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": {
+                  "env": "prod-local",
+                  "managed-by": "terraform"
+                },
+                "name": "data",
+                "resource_version": "634",
+                "uid": "b81794b0-efab-4d89-bf0c-b6066b5a1887"
+              }
+            ],
+            "timeouts": null,
+            "wait_for_default_service_account": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        },
+        {
+          "index_key": "observability",
+          "schema_version": 0,
+          "attributes": {
+            "id": "observability",
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": {
+                  "env": "prod-local",
+                  "managed-by": "terraform"
+                },
+                "name": "observability",
+                "resource_version": "635",
+                "uid": "b893e98a-71ae-4a54-aff5-d73919333ad8"
+              }
+            ],
+            "timeouts": null,
+            "wait_for_default_service_account": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        },
+        {
+          "index_key": "survivor-apps",
+          "schema_version": 0,
+          "attributes": {
+            "id": "survivor-apps",
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": {
+                  "env": "prod-local",
+                  "managed-by": "terraform"
+                },
+                "name": "survivor-apps",
+                "resource_version": "636",
+                "uid": "ae1093fc-55e7-46db-99c7-b1b020d494aa"
+              }
+            ],
+            "timeouts": null,
+            "wait_for_default_service_account": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubernetes_resource_quota",
+      "name": "data_quota",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "data/data-quota",
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": null,
+                "name": "data-quota",
+                "namespace": "data",
+                "resource_version": "652",
+                "uid": "2fd0c995-466a-4fea-a521-01c953d9f196"
+              }
+            ],
+            "spec": [
+              {
+                "hard": {
+                  "cpu": "4",
+                  "memory": "8Gi",
+                  "pods": "20"
+                },
+                "scope_selector": [],
+                "scopes": null
+              }
+            ],
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMCwidXBkYXRlIjo2MDAwMDAwMDAwMH19",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubernetes_secret",
+      "name": "minio_auth",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "binary_data": null,
+            "binary_data_wo": null,
+            "binary_data_wo_revision": null,
+            "data": {
+              "root-password": "c3Vydml2b3Itc3RvcmFnZS1wdw==",
+              "root-user": "c3Vydml2b3ItYWRtaW4="
+            },
+            "data_wo": null,
+            "data_wo_revision": null,
+            "id": "data/minio-auth",
+            "immutable": false,
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": null,
+                "name": "minio-auth",
+                "namespace": "data",
+                "resource_version": "649",
+                "uid": "983b064c-a757-4e27-9345-77041aaf11ac"
+              }
+            ],
+            "timeouts": null,
+            "type": "Opaque",
+            "wait_for_service_account_token": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMH19",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubernetes_secret",
+      "name": "postgres_auth",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "binary_data": null,
+            "binary_data_wo": null,
+            "binary_data_wo_revision": null,
+            "data": {
+              "postgres-password": "c3Vydml2b3Itc2VjcmV0LXB3"
+            },
+            "data_wo": null,
+            "data_wo_revision": null,
+            "id": "data/postgres-auth",
+            "immutable": false,
+            "metadata": [
+              {
+                "annotations": null,
+                "generate_name": "",
+                "generation": 0,
+                "labels": null,
+                "name": "postgres-auth",
+                "namespace": "data",
+                "resource_version": "648",
+                "uid": "d60ba0a7-670a-48d8-ac72-0e4751d7caa1"
+              }
+            ],
+            "timeouts": null,
+            "type": "Opaque",
+            "wait_for_service_account_token": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMH19",
+          "dependencies": [
+            "kind_cluster.survivor_net",
+            "kubernetes_namespace.namespaces"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

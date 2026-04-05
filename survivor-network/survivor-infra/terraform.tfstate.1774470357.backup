@@ -1,0 +1,156 @@
+{
+  "version": 4,
+  "terraform_version": "1.5.7",
+  "serial": 106,
+  "lineage": "a467849a-663b-4e30-ba3d-f050157212b2",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "kubernetes_ingress_v1",
+      "name": "minio_ingress",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "data/minio-ingress",
+            "metadata": [
+              {
+                "annotations": {
+                  "nginx.ingress.kubernetes.io/cors-allow-credentials": "true",
+                  "nginx.ingress.kubernetes.io/cors-allow-methods": "PUT, GET, POST, OPTIONS, DELETE",
+                  "nginx.ingress.kubernetes.io/cors-allow-origin": "http://minio.127.0.0.1.nip.io, http://minio-api.127.0.0.1.nip.io",
+                  "nginx.ingress.kubernetes.io/enable-cors": "true",
+                  "nginx.ingress.kubernetes.io/proxy-body-size": "1024m",
+                  "nginx.ingress.kubernetes.io/proxy-http-version": "1.1",
+                  "nginx.ingress.kubernetes.io/proxy-read-timeout": "600",
+                  "nginx.ingress.kubernetes.io/proxy-send-timeout": "600",
+                  "nginx.ingress.kubernetes.io/ssl-redirect": "false"
+                },
+                "generate_name": "",
+                "generation": 1,
+                "labels": {},
+                "name": "minio-ingress",
+                "namespace": "data",
+                "resource_version": "76016",
+                "uid": "ca067aff-2959-4ec3-b782-f94563a2c362"
+              }
+            ],
+            "spec": [
+              {
+                "default_backend": [],
+                "ingress_class_name": "nginx",
+                "rule": [
+                  {
+                    "host": "minio.127.0.0.1.nip.io",
+                    "http": [
+                      {
+                        "path": [
+                          {
+                            "backend": [
+                              {
+                                "resource": [],
+                                "service": [
+                                  {
+                                    "name": "survivor-storage",
+                                    "port": [
+                                      {
+                                        "name": "",
+                                        "number": 9001
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ],
+                            "path": "/",
+                            "path_type": "Prefix"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "host": "minio-api.127.0.0.1.nip.io",
+                    "http": [
+                      {
+                        "path": [
+                          {
+                            "backend": [
+                              {
+                                "resource": [],
+                                "service": [
+                                  {
+                                    "name": "survivor-storage",
+                                    "port": [
+                                      {
+                                        "name": "",
+                                        "number": 9000
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ],
+                            "path": "/",
+                            "path_type": "Prefix"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "tls": []
+              }
+            ],
+            "status": [
+              {
+                "load_balancer": [
+                  {
+                    "ingress": [
+                      {
+                        "hostname": "",
+                        "ip": "10.96.199.142"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "timeouts": null,
+            "wait_for_load_balancer": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "helm_release.ingress_nginx",
+            "helm_release.minio",
+            "kind_cluster.survivor_net",
+            "null_resource.load_minio_image"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "load_minio_image",
+      "provider": "provider[\"registry.terraform.io/hashicorp/null\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "8723305812694684863",
+            "triggers": null
+          },
+          "sensitive_attributes": [],
+          "dependencies": [
+            "kind_cluster.survivor_net"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

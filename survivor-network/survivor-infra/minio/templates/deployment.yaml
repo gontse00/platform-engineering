@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "minio.fullname" . }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "minio.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "minio.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: 1001 # Critical for Bitnami image write permissions
+      containers:
+        - name: minio
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          command: ["minio"]
+          args:
+            - "server"
+            - "/bitnami/minio/data"
+            - "--address"
+            - "0.0.0.0:9000"         # Bind to all interfaces
+            - "--console-address"
+            - "0.0.0.0:9001"
+          ports:
+            - containerPort: {{ .Values.service.apiPort }}
+              name: api
+            - containerPort: {{ .Values.service.consolePort }}
+              name: console
+          env:
+            - name: MINIO_BROWSER_REDIRECT_URL
+              value: {{ (index .Values.extraEnvVars 0).value | quote }}
+            - name: MINIO_SERVER_URL
+              value: {{ (index .Values.extraEnvVars 1).value | quote }}
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default "minio-auth" .Values.auth.secretName }}
+                  key: root-user
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default "minio-auth" .Values.auth.secretName }}
+                  key: root-password
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/minio/data
+      volumes:
+        - name: data
+          emptyDir: {}

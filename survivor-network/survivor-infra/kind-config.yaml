@@ -1,0 +1,33 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+# The Brain
+- role: control-plane
+  image: kindest/node:v1.31.0
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+
+# The Muscle (Workers)
+- role: worker
+  image: kindest/node:v1.31.0
+  labels:
+    tier: data # We will pin Postgres/Kafka here
+- role: worker
+  image: kindest/node:v1.31.0
+  labels:
+    tier: compute # We will run Spark/Agents here
+- role: worker
+  image: kindest/node:v1.31.0
+  labels:
+    tier: tools # We will run Argo/Grafana here
