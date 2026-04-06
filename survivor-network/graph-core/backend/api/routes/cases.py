@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from models.graph import GraphNodeDB
 from models.schemas import (
-    CaseIntakeRequest,
-    CaseIntakeResponse,
     CaseContextUpdateRequest,
     CaseContextUpdateResponse,
+    CaseIntakeRequest,
+    CaseIntakeResponse,
+    CaseTimelineResponse,
 )
 from services.case_orchestration_service import CaseOrchestrationService
 from services.case_update_service import CaseUpdateService
@@ -35,3 +37,15 @@ def update_case_context(case_id: str, payload: CaseContextUpdateRequest, db: Ses
     if not result["updated"]:
         raise HTTPException(status_code=404, detail=result["message"])
     return result
+
+
+@router.get("/{case_id}/timeline", response_model=CaseTimelineResponse)
+def get_case_timeline(case_id: str, db: Session = Depends(get_db)):
+    case_node = (
+        db.query(GraphNodeDB)
+        .filter(GraphNodeDB.id == case_id, GraphNodeDB.node_type == "Case")
+        .first()
+    )
+    if case_node is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return CaseUpdateService.get_case_timeline(db=db, case_id=case_id)

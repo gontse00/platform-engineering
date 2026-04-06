@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -18,7 +19,7 @@ class ChatSessionDB(Base):
     escalated: Mapped[bool] = mapped_column(Boolean, default=False)
     latest_urgency: Mapped[str | None] = mapped_column(String(50), nullable=True)
     latest_queue: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    state_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    state_json: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSONB), default=dict)
 
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -40,7 +41,7 @@ class ChatMessageDB(Base):
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
     client_message_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    extracted_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extracted_json: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSONB), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     session: Mapped["ChatSessionDB"] = relationship(back_populates="messages")
@@ -54,7 +55,7 @@ class ChatAttachmentDB(Base):
     attachment_type: Mapped[str] = mapped_column(String(50))
     storage_path: Mapped[str] = mapped_column(Text)
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSONB), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     session: Mapped["ChatSessionDB"] = relationship(back_populates="attachments")

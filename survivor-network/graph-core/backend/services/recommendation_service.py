@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from models.graph import GraphNodeDB
 from services.graph_service import GraphService
 from services.intake_service import IntakeParseResult
+from services.routing_service import RoutingService
 from services.search_service import SearchService
 
 
@@ -81,10 +82,13 @@ class RecommendationService:
         db: Session,
         parsed: IntakeParseResult,
         top_k: int = 5,
+        urgency: str = "unknown",
     ) -> dict:
         primary_need_nodes = RecommendationService._get_need_nodes(db, parsed.primary_needs)
         derived_need_nodes = RecommendationService._get_need_nodes(db, parsed.derived_support_needs)
-        all_need_nodes = primary_need_nodes + [n for n in derived_need_nodes if n.id not in {x.id for x in primary_need_nodes}]
+        all_need_nodes = primary_need_nodes + [
+            n for n in derived_need_nodes if n.id not in {x.id for x in primary_need_nodes}
+        ]
 
         location_node = RecommendationService._get_location_node(db, parsed.normalized_location)
 
@@ -92,7 +96,6 @@ class RecommendationService:
         primary_helpers: list[dict] = []
         barrier_helpers: list[dict] = []
 
-        # Resources: mainly for primary needs
         for need_node in primary_need_nodes:
             resources = GraphService._get_resources_for_need(db, need_node.id)
             helpers = GraphService._get_helpers_for_need(db, need_node.id)
@@ -100,7 +103,6 @@ class RecommendationService:
             primary_resources.extend(GraphService._node_to_dict(r) for r in resources)
             primary_helpers.extend(GraphService._node_to_dict(h) for h in helpers)
 
-        # Helpers: also for barrier-derived support needs
         for need_node in derived_need_nodes:
             helpers = GraphService._get_helpers_for_need(db, need_node.id)
             barrier_helpers.extend(GraphService._node_to_dict(h) for h in helpers)
@@ -114,10 +116,8 @@ class RecommendationService:
             if GraphService._is_node_available(db, r["id"])
         ]
 
-        # Merge helper lists, keeping primary-need helpers first
         matched_helpers = RecommendationService._dedupe_dict_nodes(primary_helpers + barrier_helpers)
 
-        # Prioritize same-location resources/helpers
         if location_node:
             location_payload = GraphService.get_support_options_for_location(db, location_node.id)
             local_resource_ids = {r["id"] for r in location_payload.get("resources", [])}
@@ -142,35 +142,33 @@ class RecommendationService:
         else:
             semantic_results = semantic_payload
 
+        ranked_destinations, routing_summary = RoutingService().rank_destinations(
+            resources=matched_resources[:top_k],
+            helpers=matched_helpers[:top_k],
+            primary_needs=parsed.primary_needs,
+            derived_support_needs=parsed.derived_support_needs,
+            normalized_barriers=parsed.normalized_barriers,
+            normalized_location=parsed.normalized_location,
+            urgency=urgency,
+        )
+
         recommended_actions: list[dict] = []
 
-        for resource in matched_resources[:3]:
+        for ranked in ranked_destinations[:top_k]:
+            category = "primary_support" if ranked.node_type.lower() == "resource" else "barrier_mitigation"
             recommended_actions.append(
                 {
-                    "kind": "resource",
-                    "category": "primary_support",
-                    "reason": "Resource matches a primary need and is prioritized by location",
-                    "node": resource,
-                }
-            )
-
-        for helper in primary_helpers[:2]:
-            recommended_actions.append(
-                {
-                    "kind": "helper",
-                    "category": "primary_support",
-                    "reason": "Helper capability matches a primary need",
-                    "node": helper,
-                }
-            )
-
-        for helper in barrier_helpers[:2]:
-            recommended_actions.append(
-                {
-                    "kind": "helper",
-                    "category": "barrier_mitigation",
-                    "reason": "Helper capability matches support needed to overcome a detected barrier",
-                    "node": helper,
+                    "kind": ranked.node_type.lower(),
+                    "category": category,
+                    "reason": "; ".join(ranked.why_selected) if ranked.why_selected else "Ranked by routing engine",
+                    "node": {
+                        "id": ranked.node_id,
+                        "node_type": ranked.node_type,
+                        "label": ranked.label,
+                        "metadata": ranked.metadata,
+                    },
+                    "score": ranked.score,
+                    "score_breakdown": ranked.score_breakdown.model_dump(),
                 }
             )
 
@@ -205,4 +203,6 @@ class RecommendationService:
             "matched_helpers": matched_helpers[:top_k],
             "semantic_results": semantic_results,
             "recommended_actions": recommended_actions[:top_k],
+            "ranked_destinations": [item.model_dump() for item in ranked_destinations[:top_k]],
+            "routing_summary": routing_summary.model_dump() if routing_summary else None,
         }

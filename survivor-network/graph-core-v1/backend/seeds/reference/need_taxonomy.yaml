@@ -1,0 +1,81 @@
+nodes:
+  - key: medical
+    node_type: NeedCategory
+    label: Medical
+    metadata: {}
+
+  - key: emergency_medical
+    node_type: NeedType
+    label: Emergency Medical
+    metadata: {}
+
+  - key: chronic_care
+    node_type: NeedType
+    label: Chronic Care
+    metadata: {}
+
+  - key: medication_access
+    node_type: NeedType
+    label: Medication Access
+    metadata: {}
+
+  - key: mental_health_support
+    node_type: NeedType
+    label: Mental Health Support
+    metadata: {}
+
+  - key: legal
+    node_type: NeedCategory
+    label: Legal
+    metadata: {}
+
+  - key: protection_order
+    node_type: NeedType
+    label: Protection Order Support
+    metadata: {}
+
+  - key: shelter
+    node_type: NeedCategory
+    label: Shelter
+    metadata: {}
+
+  - key: emergency_shelter
+    node_type: NeedType
+    label: Emergency Shelter
+    metadata: {}
+
+  - key: transport
+    node_type: NeedCategory
+    label: Transport
+    metadata: {}
+
+edges:
+  - from: emergency_medical
+    to: medical
+    edge_type: IS_A
+    metadata: {}
+
+  - from: chronic_care
+    to: medical
+    edge_type: IS_A
+    metadata: {}
+
+  - from: medication_access
+    to: medical
+    edge_type: IS_A
+    metadata: {}
+
+  - from: mental_health_support
+    to: medical
+    edge_type: IS_A
+    metadata: {}
+
+  - from: protection_order
+    to: legal
+    edge_type: IS_A
+    metadata: {}
+
+  - from: emergency_shelter
+    to: shelter
+    edge_type: IS_A
+    metadata: {}

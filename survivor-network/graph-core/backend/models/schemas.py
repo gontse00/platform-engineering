@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import Any, Dict
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, BaseModel
 from domain.constants import ALLOWED_EDGE_TYPES, ALLOWED_NODE_TYPES
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 class EscalationAction(BaseModel):
     action: str
@@ -86,7 +85,9 @@ class IntakeAssessResponse(BaseModel):
     matched_resources: list[dict[str, Any]]
     matched_helpers: list[dict[str, Any]]
     semantic_results: list[dict[str, Any]]
-    recommended_actions: list[RecommendationItem]
+    recommended_actions: list[dict[str, Any]]
+    ranked_destinations: list[dict[str, Any]] = Field(default_factory=list)
+    routing_summary: dict[str, Any] | None = None
 
 
 class NodeCreate(BaseModel):
@@ -291,3 +292,39 @@ class CaseContextUpdateResponse(BaseModel):
     case_id: str
     updated: bool
     message: str
+
+class CaseTimelineEvent(BaseModel):
+    node_id: str
+    node_type: str
+    label: str
+    edge_type: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime | None = None
+
+class CaseTimelineResponse(BaseModel):
+    case_id: str
+    events: list[CaseTimelineEvent] = Field(default_factory=list)
+
+class RouteScoreBreakdown(BaseModel):
+    need_match: float = 0.0
+    location_match: float = 0.0
+    urgency_fit: float = 0.0
+    barrier_support: float = 0.0
+    availability: float = 0.0
+
+
+class RankedDestination(BaseModel):
+    node_id: str
+    node_type: str
+    label: str
+    score: float
+    score_breakdown: RouteScoreBreakdown
+    why_selected: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RoutingSummary(BaseModel):
+    top_destination_label: Optional[str] = None
+    top_destination_type: Optional[str] = None
+    total_ranked: int = 0
+    notes: List[str] = Field(default_factory=list)

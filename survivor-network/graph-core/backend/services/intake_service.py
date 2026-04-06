@@ -76,10 +76,6 @@ class IntakeService:
             r"\bsafe to stay\b",
             r"\bstay tonight\b",
             r"\bnot safe at home\b",
-            r"\bsomewhere safe to stay\b",
-            r"\bsafe to stay\b",
-            r"\bstay tonight\b",
-            r"\bnot safe at home\b",
         ],
         "Protection Order Support": [
             r"\bprotection order\b",
@@ -89,7 +85,6 @@ class IntakeService:
             r"\brestraining order\b",
             r"\babuse\b",
             r"\bthreatened me\b",
-            r"\bpartner threatened me\b",
             r"\bpartner threatened me\b",
         ],
         "Transport": [
@@ -237,8 +232,6 @@ class IntakeService:
             set(n for n in derived_support_needs if n not in primary_needs)
         )
 
-        # If a derived support need also landed in primary_needs because of barrier wording,
-        # keep it in derived_support_needs instead.
         for barrier in normalized_barriers:
             support_need = IntakeService.BARRIER_TO_SUPPORT_NEED.get(barrier)
             if support_need and support_need in primary_needs:

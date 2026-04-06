@@ -41,6 +41,7 @@ def assess_triage(payload: TriageAssessRequest, db: Session = Depends(get_db)):
         db=db,
         parsed=parsed,
         top_k=payload.top_k,
+        urgency=triage.get("urgency", "unknown"),
     )
 
     return {

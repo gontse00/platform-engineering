@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS, DELETE"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "http://minio.127.0.0.1.nip.io, http://minio-api.127.0.0.1.nip.io"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1024m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/upgrade: "websocket"
+    nginx.ingress.kubernetes.io/connection: "upgrade"
+  creationTimestamp: "2026-03-23T16:14:07Z"
+  generation: 1
+  name: minio-ingress
+  namespace: data
+  resourceVersion: "72461"
+  uid: ca067aff-2959-4ec3-b782-f94563a2c362
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: minio.127.0.0.1.nip.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: survivor-storage
+            port:
+              number: 9001
+        path: /
+        pathType: Prefix
+  - host: minio-api.127.0.0.1.nip.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: survivor-storage
+            port:
+              number: 9000
+        path: /
+        pathType: Prefix
+status:
+  loadBalancer:
+    ingress:
+    - ip: 10.96.199.142

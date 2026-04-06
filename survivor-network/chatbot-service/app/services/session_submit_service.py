@@ -12,7 +12,7 @@ class SessionSubmitService:
         if not session.provisional_case_id:
             return
 
-        state = session.state_json or {}
+        state = dict(session.state_json or {})
         payload = {
             "session_id": str(session.id),
             "immediate_danger": state.get("immediate_danger"),

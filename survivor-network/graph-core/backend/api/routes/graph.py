@@ -1,25 +1,23 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 from sqlalchemy import text
-from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from app.db import get_db
 from models.schemas import (
+    CaseGraphResponse,
+    CaseSupportOptionsResponse,
     EdgeCreate,
     EdgeResponse,
     EdgeUpdate,
+    LocationSupportOptionsResponse,
+    MatchmakingResult,
     NeighborResponse,
     NodeCreate,
     NodeResponse,
     NodeUpdate,
-    CaseGraphResponse,
-    MatchmakingResult,
     SupportOptionsResponse,
-    CaseSupportOptionsResponse,
-    LocationSupportOptionsResponse,
 )
 from services.graph_service import GraphService
 
@@ -30,13 +28,15 @@ router = APIRouter(prefix="/graph", tags=["graph"])
 def graph_health():
     return {"status": "ok"}
 
+
 @router.get("/db-health")
 def db_health(db: Session = Depends(get_db)):
     try:
         result = db.execute(text("select 1")).scalar()
         return {"status": "ok", "db": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database check failed: {str(e)}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Database check failed: {str(exc)}")
+
 
 @router.post("/nodes", response_model=NodeResponse, status_code=201)
 def create_node(payload: NodeCreate, db: Session = Depends(get_db)):
@@ -98,17 +98,21 @@ def list_nodes(
         for node in nodes
     ]
 
+
 @router.delete("/nodes/{node_id}")
 def delete_node(node_id: UUID, db: Session = Depends(get_db)):
     return GraphService.delete_node(db, node_id)
+
 
 @router.delete("/edges/{edge_id}")
 def delete_edge(edge_id: UUID, db: Session = Depends(get_db)):
     return GraphService.delete_edge(db, edge_id)
 
+
 @router.get("/cases/{case_id}/graph", response_model=CaseGraphResponse)
 def get_case_graph(case_id: UUID, db: Session = Depends(get_db)):
     return GraphService.get_case_graph(db, case_id)
+
 
 @router.get("/matchmaking", response_model=MatchmakingResult)
 def get_matchmaking(
@@ -124,6 +128,7 @@ def get_matchmaking(
         priority=priority,
     )
 
+
 @router.get("/survivors/{survivor_id}/support-options", response_model=SupportOptionsResponse)
 def get_support_options_for_survivor(
     survivor_id: UUID,
@@ -137,6 +142,7 @@ def get_support_options_for_survivor(
         location=location,
         need_priority=need_priority,
     )
+
 
 @router.get("/cases/{case_id}/support-options", response_model=CaseSupportOptionsResponse)
 def get_support_options_for_case(
@@ -154,6 +160,7 @@ def get_support_options_for_case(
         need_priority=need_priority,
     )
 
+
 @router.get("/locations/{location_id}/support-options", response_model=LocationSupportOptionsResponse)
 def get_support_options_for_location(
     location_id: UUID,
@@ -168,6 +175,7 @@ def get_support_options_for_location(
         need_priority=need_priority,
     )
 
+
 @router.patch("/nodes/{node_id}", response_model=NodeResponse)
 def update_node(node_id: UUID, payload: NodeUpdate, db: Session = Depends(get_db)):
     node = GraphService.update_node(db, node_id, payload)
@@ -178,6 +186,7 @@ def update_node(node_id: UUID, payload: NodeUpdate, db: Session = Depends(get_db
         "metadata": node.metadata_json,
         "created_at": node.created_at,
     }
+
 
 @router.patch("/edges/{edge_id}", response_model=EdgeResponse)
 def update_edge(edge_id: UUID, payload: EdgeUpdate, db: Session = Depends(get_db)):

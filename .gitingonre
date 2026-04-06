@@ -1,0 +1,117 @@
+# =========================
+# Terraform
+# =========================
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.crt
+secrets.yaml
+values-secret.yaml
+
+# =========================
+# Python (FastAPI backend)
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# Virtual environments
+venv/
+.envrc
+.venv/
+ENV/
+env/
+
+# =========================
+# Node / Frontend (if any)
+# =========================
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+*.out
+
+# =========================
+# Mac / OS
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# =========================
+# VS Code / IDEs
+# =========================
+.vscode/
+.idea/
+*.iml
+
+# =========================
+# Kubernetes / Helm
+# =========================
+*.kubeconfig
+kubeconfig.yaml
+*.secret.yaml
+
+# Helm build artifacts
+charts/*/charts/
+charts/*/tmp/
+
+# =========================
+# Docker
+# =========================
+*.tar
+*.tar.gz
+.dockerignore
+
+# =========================
+# Testing / Coverage
+# =========================
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# =========================
+# Misc
+# =========================
+*.swp
+*.bak
+*.tmp
+*.orig
+
+# =========================
+# Project-specific (Survivor)
+# =========================
+# Local data volumes
+data/
+minio-data/
+postgres-data/
+
+# Generated configs / runtime files
+*.generated.yaml
+*.local.yaml

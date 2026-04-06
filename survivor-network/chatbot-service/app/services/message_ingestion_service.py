@@ -80,6 +80,7 @@ class MessageIngestionService:
             graph = GraphCoreClient()
             graph.update_case_context(session.provisional_case_id, payload)
         except GraphCoreUnavailableError:
+            # Do not fail the chat turn just because background case enrichment failed.
             pass
 
     @staticmethod
@@ -213,6 +214,7 @@ class MessageIngestionService:
                 "latest_assessment": assessment,
             }
 
+        # Existing case: enrich it instead of creating a second one.
         if session.provisional_case_id:
             MessageIngestionService._safe_case_update(session)
 
