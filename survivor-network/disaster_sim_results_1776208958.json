@@ -1,0 +1,66 @@
+{
+  "total_users": 100,
+  "completed": 67,
+  "failed": 33,
+  "duration_seconds": 68.6,
+  "total_requests": 373,
+  "successful_requests": 307,
+  "failed_requests": 66,
+  "overall_latency": {
+    "avg_ms": 823.3,
+    "p50_ms": 128.3,
+    "p95_ms": 5672.4,
+    "max_ms": 21678.8
+  },
+  "by_step": {
+    "message_1": {
+      "count": 63,
+      "avg_ms": 217.4,
+      "p50_ms": 118.5,
+      "p95_ms": 661.2,
+      "max_ms": 794.6
+    },
+    "message_2": {
+      "count": 59,
+      "avg_ms": 276.3,
+      "p50_ms": 179.3,
+      "p95_ms": 759.5,
+      "max_ms": 1134.7
+    },
+    "message_3": {
+      "count": 39,
+      "avg_ms": 278.4,
+      "p50_ms": 184.9,
+      "p95_ms": 664.1,
+      "max_ms": 750.1
+    },
+    "message_4": {
+      "count": 22,
+      "avg_ms": 266.6,
+      "p50_ms": 210.0,
+      "p95_ms": 611.5,
+      "max_ms": 698.3
+    },
+    "start_session": {
+      "count": 67,
+      "avg_ms": 2098.5,
+      "p50_ms": 285.2,
+      "p95_ms": 6540.3,
+      "max_ms": 21194.4
+    },
+    "submit": {
+      "count": 57,
+      "avg_ms": 1147.9,
+      "p50_ms": 10.0,
+      "p95_ms": 19445.9,
+      "max_ms": 21678.8
+    }
+  },
+  "urgency_distribution": {
+    "standard": 69,
+    "high": 74,
+    "critical": 113,
+    "urgent": 117
+  },
+  "requests_per_second": 5.4
+}
