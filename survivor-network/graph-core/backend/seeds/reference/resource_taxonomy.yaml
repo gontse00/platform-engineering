@@ -1,12 +1,15 @@
 nodes:
-  - key: clinic
-    node_type: ResourceType
-    label: Clinic
-    metadata: {}
-
+  # ========================
+  # Resource Types
+  # ========================
   - key: hospital
     node_type: ResourceType
     label: Hospital
+    metadata: {}
+
+  - key: clinic
+    node_type: ResourceType
+    label: Clinic
     metadata: {}
 
   - key: shelter_type
@@ -14,6 +17,11 @@ nodes:
     label: Shelter
     metadata: {}
 
+  - key: safe_house_type
+    node_type: ResourceType
+    label: Safe House
+    metadata: {}
+
   - key: crisis_hotline
     node_type: ResourceType
     label: Crisis Hotline
@@ -24,38 +32,19 @@ nodes:
     label: Legal Aid Office
     metadata: {}
 
-  - key: hillbrow_clinic
-    node_type: Resource
-    label: Hillbrow Clinic
-    metadata:
-      phone: "+27-11-000-0000"
-
-  - key: jozi_safe_shelter
-    node_type: Resource
-    label: Jozi Safe Shelter
-    metadata:
-      phone: "+27-11-000-1111"
-  
-  - key: legal_aid_office
+  - key: police_station
     node_type: ResourceType
-    label: Legal Aid Office
+    label: Police Station
     metadata: {}
 
-  - key: legal_aid_johannesburg
-    node_type: Resource
-    label: Legal Aid Johannesburg
-    metadata:
-      phone: "+27-11-000-2222"
-
-  - key: saps_victim_support_desk
-    node_type: Resource
-    label: SAPS Victim Support Desk
-    metadata:
-      phone: "+27-11-000-3333"
-
-  - key: crisis_hotline
+  - key: thuthuzela_care_centre
     node_type: ResourceType
-    label: Crisis Hotline
+    label: Thuthuzela Care Centre
+    metadata: {}
+
+  - key: counseling_centre
+    node_type: ResourceType
+    label: Counseling Centre
     metadata: {}
 
   - key: social_worker_type
@@ -63,173 +52,625 @@ nodes:
     label: Social Worker
     metadata: {}
 
-  - key: safe_house_type
+  - key: ngo_type
     node_type: ResourceType
-    label: Safe House
+    label: NGO
     metadata: {}
 
-  - key: johannesburg_crisis_hotline
+  # ========================
+  # EMERGENCY MEDICAL
+  # ========================
+  - key: chris_hani_baragwanath
     node_type: Resource
-    label: Johannesburg Crisis Hotline
+    label: Chris Hani Baragwanath Academic Hospital
     metadata:
-      phone: "+27-11-000-4444"
+      phone: "+27-11-933-8000"
+      address: "26 Chris Hani Rd, Diepkloof, Soweto, 1864"
+      lat: -26.2612
+      lon: 27.9388
+      hours: "24/7"
+      services: ["emergency_medical", "trauma", "sexual_assault_forensics", "maternity"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Soweto", "Diepkloof", "Meadowlands", "Orlando", "Dobsonville", "Protea Glen", "Eldorado Park", "Lenasia"]
+      barrier_support: ["wheelchair_accessible", "ambulance_dispatch"]
+      type: public_hospital
 
-  - key: johannesburg_social_worker
+  - key: charlotte_maxeke
     node_type: Resource
-    label: Johannesburg Social Worker
+    label: Charlotte Maxeke Johannesburg Academic Hospital
     metadata:
-      phone: "+27-11-000-5555"
+      phone: "+27-11-488-4911"
+      address: "Jubilee Rd, Parktown, Johannesburg, 2193"
+      lat: -26.1748
+      lon: 28.0380
+      hours: "24/7"
+      services: ["emergency_medical", "trauma", "sexual_assault_forensics", "burns", "psychiatric"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Parktown", "Hillbrow", "Berea", "Braamfontein", "Johannesburg CBD", "Rosebank"]
+      barrier_support: ["wheelchair_accessible", "ambulance_dispatch"]
+      type: public_hospital
 
-  - key: johannesburg_safe_house
+  - key: helen_joseph
     node_type: Resource
-    label: Johannesburg Safe House
+    label: Helen Joseph Hospital
     metadata:
-      phone: "+27-11-000-6666"
+      phone: "+27-11-489-0111"
+      address: "Perth Rd, Auckland Park, Johannesburg, 2006"
+      lat: -26.1830
+      lon: 28.0030
+      hours: "24/7"
+      services: ["emergency_medical", "trauma", "maternity"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Auckland Park", "Melville", "Westbury", "Coronationville", "Roodepoort"]
+      barrier_support: ["wheelchair_accessible"]
+      type: public_hospital
+
+  - key: rahima_moosa
+    node_type: Resource
+    label: Rahima Moosa Mother and Child Hospital
+    metadata:
+      phone: "+27-11-470-9000"
+      address: "Fuel Rd, Coronationville, Johannesburg, 2093"
+      lat: -26.1890
+      lon: 27.9880
+      hours: "24/7"
+      services: ["emergency_medical", "maternity", "paediatrics"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Coronationville", "Westbury", "Auckland Park", "Melville"]
+      barrier_support: ["wheelchair_accessible"]
+      type: public_hospital
+
+  - key: lenasia_south_hospital
+    node_type: Resource
+    label: Lenasia South Hospital
+    metadata:
+      phone: "+27-11-213-9800"
+      address: "Lenasia South, Johannesburg"
+      lat: -26.3500
+      lon: 27.8300
+      hours: "24/7"
+      services: ["emergency_medical", "maternity"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Lenasia", "Ennerdale", "Eldorado Park"]
+      barrier_support: ["wheelchair_accessible"]
+      type: public_hospital
+
+  - key: netcare_milpark
+    node_type: Resource
+    label: Netcare Milpark Hospital
+    metadata:
+      phone: "+27-11-480-5600"
+      address: "9 Guild Rd, Parktown West, Johannesburg, 2196"
+      lat: -26.1810
+      lon: 28.0150
+      hours: "24/7"
+      services: ["emergency_medical", "trauma", "neurosurgery"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Parktown", "Melville", "Auckland Park", "Braamfontein", "Johannesburg CBD"]
+      barrier_support: ["wheelchair_accessible", "ambulance_dispatch"]
+      type: private_hospital
+      note: "Premier trauma unit — may require medical aid or upfront payment"
+
+  - key: hillbrow_chc
+    node_type: Resource
+    label: Hillbrow Community Health Centre
+    metadata:
+      phone: "+27-11-694-3700"
+      address: "Corner Klein & Smit St, Hillbrow, Johannesburg"
+      lat: -26.1930
+      lon: 28.0480
+      hours: "Mon-Fri 07:00-19:00, Sat 08:00-13:00"
+      services: ["primary_healthcare", "hiv_testing", "medication_access"]
+      accepted_urgencies: ["urgent", "standard"]
+      covered_locations: ["Hillbrow", "Berea", "Joubert Park", "Johannesburg CBD"]
+      barrier_support: []
+      type: public_clinic
+
+  # ========================
+  # SHELTERS & SAFE HOUSES
+  # ========================
+  - key: powa_shelter
+    node_type: Resource
+    label: People Opposing Women Abuse (POWA) Shelter
+    metadata:
+      phone: "+27-11-642-4345"
+      address: "Berea, Johannesburg (exact address confidential)"
+      lat: -26.1950
+      lon: 28.0510
+      hours: "24/7 intake"
+      services: ["emergency_shelter", "counseling", "legal_support", "court_preparation"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Johannesburg CBD", "Hillbrow", "Berea", "Jeppestown", "Bertrams"]
+      barrier_support: ["transport_assistance", "childcare"]
+      type: shelter
+      note: "Women and children only"
+
+  - key: bethany_house
+    node_type: Resource
+    label: Bethany House
+    metadata:
+      phone: "+27-11-614-2107"
+      address: "Bertrams, Johannesburg"
+      lat: -26.2010
+      lon: 28.0650
+      hours: "24/7"
+      services: ["emergency_shelter", "counseling", "skills_training"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Bertrams", "Jeppestown", "Johannesburg CBD", "Hillbrow"]
+      barrier_support: ["childcare"]
+      type: shelter
+      note: "Women and children"
+
+  - key: jhb_child_welfare
+    node_type: Resource
+    label: Johannesburg Child Welfare
+    metadata:
+      phone: "+27-11-298-8500"
+      address: "7 Aberdeen Rd, Kensington, Johannesburg"
+      lat: -26.1920
+      lon: 28.0780
+      hours: "Mon-Fri 08:00-16:30, 24hr emergency line"
+      services: ["emergency_shelter", "child_protection", "foster_care", "counseling"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Kensington", "Jeppestown", "Johannesburg CBD", "Alexandra", "Hillbrow"]
+      barrier_support: ["transport_assistance"]
+      type: ngo
+      note: "Children and families"
+
+  - key: usindiso_shelter
+    node_type: Resource
+    label: Usindiso Women's Shelter
+    metadata:
+      phone: "+27-11-334-1610"
+      address: "Johannesburg CBD"
+      lat: -26.2050
+      lon: 28.0460
+      hours: "24/7"
+      services: ["emergency_shelter"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Johannesburg CBD", "Hillbrow", "Joubert Park"]
+      barrier_support: []
+      type: shelter
+      note: "Women — City of Johannesburg facility"
+
+  # ========================
+  # LEGAL AID & PROTECTION ORDERS
+  # ========================
+  - key: legal_aid_jhb
+    node_type: Resource
+    label: Legal Aid South Africa — Johannesburg Justice Centre
+    metadata:
+      phone: "+27-11-877-2000"
+      address: "2 De Beer St, Braamfontein, Johannesburg"
+      lat: -26.1935
+      lon: 28.0340
+      hours: "Mon-Fri 07:30-16:00"
+      services: ["legal_aid", "protection_orders", "court_representation", "family_law"]
+      accepted_urgencies: ["high", "urgent", "standard"]
+      covered_locations: ["Braamfontein", "Johannesburg CBD", "Hillbrow", "Parktown", "Soweto", "Alexandra"]
+      barrier_support: []
+      type: legal_aid
+
+  - key: lawyers_against_abuse
+    node_type: Resource
+    label: Lawyers Against Abuse (LvA)
+    metadata:
+      phone: "+27-11-552-4442"
+      address: "Diepsloot, Johannesburg"
+      lat: -25.9320
+      lon: 28.0140
+      hours: "Mon-Fri 08:00-17:00"
+      services: ["legal_aid", "protection_orders", "counseling", "court_preparation"]
+      accepted_urgencies: ["high", "urgent", "standard"]
+      covered_locations: ["Diepsloot", "Randburg", "Sandton"]
+      barrier_support: ["transport_assistance"]
+      type: ngo
+
+  - key: wits_law_clinic
+    node_type: Resource
+    label: Wits Law Clinic
+    metadata:
+      phone: "+27-11-717-8562"
+      address: "1 Jan Smuts Ave, Braamfontein, Johannesburg"
+      lat: -26.1910
+      lon: 28.0300
+      hours: "Mon-Fri 08:30-16:00"
+      services: ["legal_aid", "protection_orders", "family_law"]
+      accepted_urgencies: ["urgent", "standard"]
+      covered_locations: ["Braamfontein", "Johannesburg CBD", "Parktown"]
+      barrier_support: []
+      type: legal_aid
+
+  # ========================
+  # SAPS VICTIM SUPPORT
+  # ========================
+  - key: saps_soweto
+    node_type: Resource
+    label: SAPS Soweto Police Station
+    metadata:
+      phone: "+27-11-983-3900"
+      address: "Koma Rd, Soweto"
+      lat: -26.2340
+      lon: 27.8640
+      hours: "24/7"
+      services: ["protection_orders", "case_reporting", "victim_support"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Soweto", "Diepkloof", "Meadowlands", "Orlando", "Dobsonville"]
+      barrier_support: []
+      type: police_station
+
+  - key: saps_hillbrow
+    node_type: Resource
+    label: SAPS Hillbrow Police Station
+    metadata:
+      phone: "+27-11-488-4215"
+      address: "Cnr Quartz & Nugget St, Hillbrow"
+      lat: -26.1960
+      lon: 28.0490
+      hours: "24/7"
+      services: ["protection_orders", "case_reporting", "victim_support"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Hillbrow", "Berea", "Joubert Park", "Johannesburg CBD"]
+      barrier_support: []
+      type: police_station
+
+  - key: saps_jeppe
+    node_type: Resource
+    label: SAPS Jeppe Police Station
+    metadata:
+      phone: "+27-11-624-8613"
+      address: "Commissioner St, Jeppestown"
+      lat: -26.2030
+      lon: 28.0610
+      hours: "24/7"
+      services: ["protection_orders", "case_reporting", "victim_support"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Jeppestown", "Bertrams", "Kensington"]
+      barrier_support: []
+      type: police_station
+
+  - key: saps_alexandra
+    node_type: Resource
+    label: SAPS Alexandra Police Station
+    metadata:
+      phone: "+27-11-442-5901"
+      address: "2nd Ave, Alexandra"
+      lat: -26.1060
+      lon: 28.0920
+      hours: "24/7"
+      services: ["protection_orders", "case_reporting", "victim_support"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Alexandra", "Sandton", "Kensington"]
+      barrier_support: []
+      type: police_station
+
+  # ========================
+  # THUTHUZELA CARE CENTRES (one-stop sexual offence survivor support)
+  # ========================
+  - key: tcc_baragwanath
+    node_type: Resource
+    label: Thuthuzela Care Centre — Chris Hani Baragwanath
+    metadata:
+      phone: "+27-11-933-8000"
+      address: "Chris Hani Baragwanath Hospital, Diepkloof, Soweto"
+      lat: -26.2612
+      lon: 27.9388
+      hours: "24/7"
+      services: ["sexual_assault_forensics", "counseling", "legal_support", "medical_examination", "hiv_prophylaxis"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Soweto", "Diepkloof", "Meadowlands", "Orlando", "Dobsonville", "Protea Glen", "Eldorado Park", "Lenasia"]
+      barrier_support: ["transport_assistance"]
+      type: thuthuzela_care_centre
+      note: "One-stop centre for sexual offence survivors — forensic exam, counseling, case management"
+
+  - key: tcc_charlotte_maxeke
+    node_type: Resource
+    label: Thuthuzela Care Centre — Charlotte Maxeke
+    metadata:
+      phone: "+27-11-488-4911"
+      address: "Charlotte Maxeke Hospital, Parktown"
+      lat: -26.1748
+      lon: 28.0380
+      hours: "24/7"
+      services: ["sexual_assault_forensics", "counseling", "legal_support", "medical_examination", "hiv_prophylaxis"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Parktown", "Hillbrow", "Berea", "Braamfontein", "Johannesburg CBD", "Rosebank"]
+      barrier_support: ["transport_assistance"]
+      type: thuthuzela_care_centre
+
+  # ========================
+  # MENTAL HEALTH & COUNSELING
+  # ========================
+  - key: lifeline_jhb
+    node_type: Resource
+    label: Lifeline Johannesburg
+    metadata:
+      phone: "+27-11-728-1347"
+      address: "2 The Avenue, Cnr Henrietta St, Norwood"
+      lat: -26.1520
+      lon: 28.0780
+      hours: "24/7 crisis line"
+      services: ["crisis_counseling", "telephonic_counseling", "face_to_face_counseling", "trauma_debriefing"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Johannesburg", "Soweto", "Alexandra", "Sandton", "Randburg", "Roodepoort"]
+      barrier_support: ["telephonic_access"]
+      type: crisis_hotline
+
+  - key: sadag
+    node_type: Resource
+    label: SADAG — SA Depression and Anxiety Group
+    metadata:
+      phone: "0800-567-567"
+      address: "National — toll-free line"
+      lat: -26.2041
+      lon: 28.0473
+      hours: "24/7"
+      services: ["crisis_counseling", "telephonic_counseling", "mental_health_referrals", "suicide_prevention"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Johannesburg", "Soweto", "Gauteng", "South Africa"]
+      barrier_support: ["telephonic_access", "toll_free"]
+      type: crisis_hotline
+
+  - key: tara_hospital
+    node_type: Resource
+    label: Tara The H. Moross Centre (Tara Hospital)
+    metadata:
+      phone: "+27-11-535-3000"
+      address: "50 Saxon Rd, Hurlingham, Johannesburg"
+      lat: -26.1290
+      lon: 28.0390
+      hours: "24/7 psychiatric emergencies"
+      services: ["psychiatric_care", "crisis_stabilization", "counseling"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Hurlingham", "Sandton", "Rosebank", "Parktown"]
+      barrier_support: ["wheelchair_accessible"]
+      type: public_hospital
+
+  - key: emthonjeni_centre
+    node_type: Resource
+    label: Emthonjeni Centre — University of the Witwatersrand
+    metadata:
+      phone: "+27-11-717-4513"
+      address: "Wits East Campus, Braamfontein"
+      lat: -26.1900
+      lon: 28.0310
+      hours: "Mon-Fri 08:00-16:30"
+      services: ["trauma_counseling", "psychotherapy", "child_counseling"]
+      accepted_urgencies: ["urgent", "standard"]
+      covered_locations: ["Braamfontein", "Parktown", "Johannesburg CBD", "Hillbrow"]
+      barrier_support: ["sliding_scale_fees"]
+      type: counseling_centre
+
+  - key: teddy_bear_clinic
+    node_type: Resource
+    label: Teddy Bear Clinic for Abused Children
+    metadata:
+      phone: "+27-11-484-4554"
+      address: "Cnr Smith & De Villiers St, Braamfontein"
+      lat: -26.1940
+      lon: 28.0350
+      hours: "Mon-Fri 08:00-16:30"
+      services: ["child_abuse_assessment", "forensic_examination", "counseling", "court_preparation"]
+      accepted_urgencies: ["critical", "high", "urgent"]
+      covered_locations: ["Braamfontein", "Johannesburg CBD", "Hillbrow", "Soweto", "Alexandra"]
+      barrier_support: ["transport_assistance"]
+      type: ngo
+      note: "Specializes in child abuse cases"
+
+  # ========================
+  # GBV HELPLINES (national, accessible from JHB)
+  # ========================
+  - key: gbv_command_centre
+    node_type: Resource
+    label: GBV Command Centre (National)
+    metadata:
+      phone: "0800-428-428"
+      address: "National — toll-free"
+      lat: -26.2041
+      lon: 28.0473
+      hours: "24/7"
+      services: ["crisis_counseling", "emergency_referral", "shelter_referral", "legal_referral"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Johannesburg", "Soweto", "Gauteng", "South Africa"]
+      barrier_support: ["telephonic_access", "toll_free", "sms_line"]
+      type: crisis_hotline
+      note: "SMS 'help' to 31531 if you can't call"
+
+  - key: stop_gender_violence
+    node_type: Resource
+    label: Stop Gender Violence Helpline
+    metadata:
+      phone: "0800-150-150"
+      address: "National — toll-free"
+      lat: -26.2041
+      lon: 28.0473
+      hours: "24/7"
+      services: ["crisis_counseling", "shelter_referral", "legal_referral"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Johannesburg", "Soweto", "Gauteng", "South Africa"]
+      barrier_support: ["telephonic_access", "toll_free"]
+      type: crisis_hotline
+
+  - key: childline_sa
+    node_type: Resource
+    label: Childline South Africa
+    metadata:
+      phone: "0800-055-555"
+      address: "National — toll-free"
+      lat: -26.2041
+      lon: 28.0473
+      hours: "24/7"
+      services: ["child_protection", "crisis_counseling", "abuse_reporting"]
+      accepted_urgencies: ["critical", "high", "urgent", "standard"]
+      covered_locations: ["Johannesburg", "Soweto", "Gauteng", "South Africa"]
+      barrier_support: ["telephonic_access", "toll_free"]
+      type: crisis_hotline
+      note: "For children and anyone reporting child abuse"
 
 edges:
-  - from: hillbrow_clinic
-    to: clinic
-    edge_type: INSTANCE_OF
-    metadata: {}
+  # === Hospital instance + provides + location edges ===
+  # Chris Hani Baragwanath
+  - { from: chris_hani_baragwanath, to: hospital, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: chris_hani_baragwanath, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: chris_hani_baragwanath, to: medication_access, edge_type: PROVIDES, metadata: {} }
+  - { from: chris_hani_baragwanath, to: soweto, edge_type: LOCATED_IN, metadata: {} }
+  - { from: chris_hani_baragwanath, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: hillbrow_clinic
-    to: emergency_medical
-    edge_type: PROVIDES
-    metadata: {}
+  # Charlotte Maxeke
+  - { from: charlotte_maxeke, to: hospital, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: charlotte_maxeke, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: charlotte_maxeke, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: charlotte_maxeke, to: parktown, edge_type: LOCATED_IN, metadata: {} }
+  - { from: charlotte_maxeke, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: hillbrow_clinic
-    to: medication_access
-    edge_type: PROVIDES
-    metadata: {}
+  # Helen Joseph
+  - { from: helen_joseph, to: hospital, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: helen_joseph, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: helen_joseph, to: auckland_park, edge_type: LOCATED_IN, metadata: {} }
+  - { from: helen_joseph, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: hillbrow_clinic
-    to: johannesburg
-    edge_type: LOCATED_IN
-    metadata: {}
+  # Rahima Moosa
+  - { from: rahima_moosa, to: hospital, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: rahima_moosa, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: rahima_moosa, to: coronationville, edge_type: LOCATED_IN, metadata: {} }
+  - { from: rahima_moosa, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: jozi_safe_shelter
-    to: shelter_type
-    edge_type: INSTANCE_OF
-    metadata: {}
+  # Lenasia South
+  - { from: lenasia_south_hospital, to: hospital, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: lenasia_south_hospital, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: lenasia_south_hospital, to: lenasia, edge_type: LOCATED_IN, metadata: {} }
+  - { from: lenasia_south_hospital, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: jozi_safe_shelter
-    to: emergency_shelter
-    edge_type: PROVIDES
-    metadata: {}
+  # Netcare Milpark
+  - { from: netcare_milpark, to: hospital, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: netcare_milpark, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: netcare_milpark, to: parktown, edge_type: LOCATED_IN, metadata: {} }
+  - { from: netcare_milpark, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: jozi_safe_shelter
-    to: johannesburg
-    edge_type: LOCATED_IN
-    metadata: {}
+  # Hillbrow CHC
+  - { from: hillbrow_chc, to: clinic, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: hillbrow_chc, to: medication_access, edge_type: PROVIDES, metadata: {} }
+  - { from: hillbrow_chc, to: hillbrow, edge_type: LOCATED_IN, metadata: {} }
+  - { from: hillbrow_chc, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: hillbrow_clinic
-    to: status_available
-    edge_type: HAS_STATUS
-    metadata: {}
+  # === Shelters ===
+  - { from: powa_shelter, to: shelter_type, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: powa_shelter, to: emergency_shelter, edge_type: PROVIDES, metadata: {} }
+  - { from: powa_shelter, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: powa_shelter, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: powa_shelter, to: berea, edge_type: LOCATED_IN, metadata: {} }
+  - { from: powa_shelter, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: jozi_safe_shelter
-    to: status_available
-    edge_type: HAS_STATUS
-    metadata: {}
+  - { from: bethany_house, to: shelter_type, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: bethany_house, to: emergency_shelter, edge_type: PROVIDES, metadata: {} }
+  - { from: bethany_house, to: bertrams, edge_type: LOCATED_IN, metadata: {} }
+  - { from: bethany_house, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: legal_aid_johannesburg
-    to: Legal Aid Office
-    edge_type: INSTANCE_OF
-    metadata: {}
+  - { from: jhb_child_welfare, to: ngo_type, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: jhb_child_welfare, to: emergency_shelter, edge_type: PROVIDES, metadata: {} }
+  - { from: jhb_child_welfare, to: kensington, edge_type: LOCATED_IN, metadata: {} }
+  - { from: jhb_child_welfare, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: legal_aid_johannesburg
-    to: Protection Order Support
-    edge_type: PROVIDES
-    metadata: {}
+  - { from: usindiso_shelter, to: shelter_type, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: usindiso_shelter, to: emergency_shelter, edge_type: PROVIDES, metadata: {} }
+  - { from: usindiso_shelter, to: johannesburg_cbd, edge_type: LOCATED_IN, metadata: {} }
+  - { from: usindiso_shelter, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: legal_aid_johannesburg
-    to: Johannesburg
-    edge_type: LOCATED_IN
-    metadata: {}
+  # === Legal Aid ===
+  - { from: legal_aid_jhb, to: legal_aid_office, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: legal_aid_jhb, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: legal_aid_jhb, to: braamfontein, edge_type: LOCATED_IN, metadata: {} }
+  - { from: legal_aid_jhb, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: legal_aid_johannesburg
-    to: Legal Aid South Africa
-    edge_type: OPERATED_BY
-    metadata: {}
+  - { from: lawyers_against_abuse, to: ngo_type, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: lawyers_against_abuse, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: lawyers_against_abuse, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: lawyers_against_abuse, to: diepsloot, edge_type: LOCATED_IN, metadata: {} }
+  - { from: lawyers_against_abuse, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: legal_aid_johannesburg
-    to: Available
-    edge_type: HAS_STATUS
-    metadata: {}
+  - { from: wits_law_clinic, to: legal_aid_office, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: wits_law_clinic, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: wits_law_clinic, to: braamfontein, edge_type: LOCATED_IN, metadata: {} }
+  - { from: wits_law_clinic, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: saps_victim_support_desk
-    to: Protection Order Support
-    edge_type: PROVIDES
-    metadata: {}
+  # === SAPS ===
+  - { from: saps_soweto, to: police_station, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: saps_soweto, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: saps_soweto, to: soweto, edge_type: LOCATED_IN, metadata: {} }
+  - { from: saps_soweto, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: saps_victim_support_desk
-    to: Johannesburg
-    edge_type: LOCATED_IN
-    metadata: {}
+  - { from: saps_hillbrow, to: police_station, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: saps_hillbrow, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: saps_hillbrow, to: hillbrow, edge_type: LOCATED_IN, metadata: {} }
+  - { from: saps_hillbrow, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: saps_victim_support_desk
-    to: Available
-    edge_type: HAS_STATUS
-    metadata: {}
+  - { from: saps_jeppe, to: police_station, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: saps_jeppe, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: saps_jeppe, to: jeppestown, edge_type: LOCATED_IN, metadata: {} }
+  - { from: saps_jeppe, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_crisis_hotline
-    to: Crisis Hotline
-    edge_type: INSTANCE_OF
-    metadata: {}
+  - { from: saps_alexandra, to: police_station, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: saps_alexandra, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: saps_alexandra, to: alexandra, edge_type: LOCATED_IN, metadata: {} }
+  - { from: saps_alexandra, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_crisis_hotline
-    to: Mental Health Support
-    edge_type: PROVIDES
-    metadata: {}
+  # === Thuthuzela ===
+  - { from: tcc_baragwanath, to: thuthuzela_care_centre, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: tcc_baragwanath, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: tcc_baragwanath, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: tcc_baragwanath, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: tcc_baragwanath, to: soweto, edge_type: LOCATED_IN, metadata: {} }
+  - { from: tcc_baragwanath, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_crisis_hotline
-    to: Johannesburg
-    edge_type: LOCATED_IN
-    metadata: {}
+  - { from: tcc_charlotte_maxeke, to: thuthuzela_care_centre, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: tcc_charlotte_maxeke, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: tcc_charlotte_maxeke, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: tcc_charlotte_maxeke, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: tcc_charlotte_maxeke, to: parktown, edge_type: LOCATED_IN, metadata: {} }
+  - { from: tcc_charlotte_maxeke, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_crisis_hotline
-    to: Available
-    edge_type: HAS_STATUS
-    metadata: {}
+  # === Mental Health ===
+  - { from: lifeline_jhb, to: crisis_hotline, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: lifeline_jhb, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: lifeline_jhb, to: johannesburg, edge_type: LOCATED_IN, metadata: {} }
+  - { from: lifeline_jhb, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_social_worker
-    to: Social Worker
-    edge_type: INSTANCE_OF
-    metadata: {}
+  - { from: sadag, to: crisis_hotline, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: sadag, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: sadag, to: johannesburg, edge_type: LOCATED_IN, metadata: {} }
+  - { from: sadag, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_social_worker
-    to: Mental Health Support
-    edge_type: PROVIDES
-    metadata: {}
+  - { from: tara_hospital, to: hospital, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: tara_hospital, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: tara_hospital, to: hurlingham, edge_type: LOCATED_IN, metadata: {} }
+  - { from: tara_hospital, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_social_worker
-    to: Johannesburg
-    edge_type: LOCATED_IN
-    metadata: {}
+  - { from: emthonjeni_centre, to: counseling_centre, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: emthonjeni_centre, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: emthonjeni_centre, to: braamfontein, edge_type: LOCATED_IN, metadata: {} }
+  - { from: emthonjeni_centre, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_social_worker
-    to: Available
-    edge_type: HAS_STATUS
-    metadata: {}
+  - { from: teddy_bear_clinic, to: ngo_type, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: teddy_bear_clinic, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: teddy_bear_clinic, to: emergency_medical, edge_type: PROVIDES, metadata: {} }
+  - { from: teddy_bear_clinic, to: braamfontein, edge_type: LOCATED_IN, metadata: {} }
+  - { from: teddy_bear_clinic, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_safe_house
-    to: Safe House
-    edge_type: INSTANCE_OF
-    metadata: {}
+  # === GBV Helplines ===
+  - { from: gbv_command_centre, to: crisis_hotline, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: gbv_command_centre, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: gbv_command_centre, to: emergency_shelter, edge_type: PROVIDES, metadata: {} }
+  - { from: gbv_command_centre, to: protection_order, edge_type: PROVIDES, metadata: {} }
+  - { from: gbv_command_centre, to: johannesburg, edge_type: LOCATED_IN, metadata: {} }
+  - { from: gbv_command_centre, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_safe_house
-    to: Emergency Shelter
-    edge_type: PROVIDES
-    metadata: {}
+  - { from: stop_gender_violence, to: crisis_hotline, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: stop_gender_violence, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: stop_gender_violence, to: emergency_shelter, edge_type: PROVIDES, metadata: {} }
+  - { from: stop_gender_violence, to: johannesburg, edge_type: LOCATED_IN, metadata: {} }
+  - { from: stop_gender_violence, to: status_available, edge_type: HAS_STATUS, metadata: {} }
 
-  - from: johannesburg_safe_house
-    to: Johannesburg
-    edge_type: LOCATED_IN
-    metadata: {}
-
-  - from: johannesburg_safe_house
-    to: Available
-    edge_type: HAS_STATUS
-    metadata: {}
-
-  
+  - { from: childline_sa, to: crisis_hotline, edge_type: INSTANCE_OF, metadata: {} }
+  - { from: childline_sa, to: mental_health_support, edge_type: PROVIDES, metadata: {} }
+  - { from: childline_sa, to: johannesburg, edge_type: LOCATED_IN, metadata: {} }
+  - { from: childline_sa, to: status_available, edge_type: HAS_STATUS, metadata: {} }

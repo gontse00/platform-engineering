@@ -142,6 +142,7 @@ class RecommendationService:
         else:
             semantic_results = semantic_payload
 
+        # Pass user coordinates through to the routing engine
         ranked_destinations, routing_summary = RoutingService().rank_destinations(
             resources=matched_resources[:top_k],
             helpers=matched_helpers[:top_k],
@@ -150,6 +151,8 @@ class RecommendationService:
             normalized_barriers=parsed.normalized_barriers,
             normalized_location=parsed.normalized_location,
             urgency=urgency,
+            user_latitude=parsed.latitude,
+            user_longitude=parsed.longitude,
         )
 
         recommended_actions: list[dict] = []

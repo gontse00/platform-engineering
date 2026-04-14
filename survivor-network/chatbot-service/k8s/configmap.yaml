@@ -8,3 +8,4 @@ data:
   ENVIRONMENT: "dev"
   GRAPH_CORE_BASE_URL: "http://graph-core:8080"
   ATTACHMENT_STORAGE_PATH: "/tmp/chatbot-attachments"
+  LLM_ENABLED: "false"

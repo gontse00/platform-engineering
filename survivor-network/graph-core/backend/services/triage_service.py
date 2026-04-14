@@ -1,160 +1,93 @@
-import re
+"""Triage assessment service.
 
+LLM-powered urgency/safety scoring with deterministic crisis safeguard boost.
+If chatbot-service detected crisis keywords, the min_urgency and min_safety
+from those keywords are used as a FLOOR — the LLM can raise them higher but
+never lower them below the deterministic minimum.
+"""
+
+import logging
+
+from clients.llm_client import GraphCoreLLMClient
+from domain.constants import boost_urgency, boost_safety, normalize_urgency, normalize_safety_risk
 from services.intake_service import IntakeParseResult
+
+logger = logging.getLogger(__name__)
 
 
 class TriageService:
-    CRITICAL_PATTERNS = [
-        r"\bbleeding\b",
-        r"\bunconscious\b",
-        r"\bnot breathing\b",
-        r"\bsevere injury\b",
-        r"\bdying\b",
-        r"\bheart attack\b",
-        r"\bstroke\b",
-    ]
-
-    HIGH_RISK_PATTERNS = [
-        r"\bassault\b",
-        r"\bassaulted\b",
-        r"\battacked\b",
-        r"\bviolence\b",
-        r"\bdomestic violence\b",
-        r"\bthreatened\b",
-        r"\bunsafe\b",
-        r"\bnot safe\b",
-        r"\btrafficking\b",
-        r"\bchild in danger\b",
-        r"\bscared to go home\b",
-        r"\bpartner threatened me\b",
-        r"\babusive partner\b",
-        r"\bi am scared\b",
-    ]
-
-    URGENT_PATTERNS = [
-        r"\bneed shelter tonight\b",
-        r"\bnowhere to sleep\b",
-        r"\bno medication\b",
-        r"\bpanic\b",
-        r"\bprotection order\b",
-        r"\bneed legal help\b",
-        r"\btraumatized\b",
-        r"\btraumatised\b",
-        r"\bneed someone to talk to\b",
-        r"\bneed to talk to someone\b",
-        r"\boverwhelmed\b",
-        r"\bemotional support\b",
-        r"\bcrisis support\b",
-    ]
-
-    INCIDENT_PATTERNS: dict[str, list[str]] = {
-        "Assault": [
-            r"\bassault\b",
-            r"\bassaulted\b",
-            r"\battacked\b",
-            r"\bbeaten\b",
-        ],
-        "Domestic Violence": [
-            r"\bdomestic violence\b",
-            r"\babusive partner\b",
-            r"\babuse at home\b",
-            r"\bpartner threatened me\b",
-        ],
-        "Displacement": [
-            r"\bevicted\b",
-            r"\bdisplaced\b",
-            r"\bnowhere to stay\b",
-        ],
-        "Missing Medication": [
-            r"\bno medication\b",
-            r"\bout of medicine\b",
-            r"\bmissed prescription\b",
-        ],
-        "Child Endangerment": [
-            r"\bchild in danger\b",
-            r"\bunsafe child\b",
-        ],
-        "Threats": [
-            r"\bthreatened\b",
-            r"\bthreatened me\b",
-        ],
-    }
+    """LLM-powered triage with deterministic crisis safeguard."""
 
     @staticmethod
-    def _detect_incident_types(message: str) -> list[str]:
-        found: list[str] = []
-        for incident_type, patterns in TriageService.INCIDENT_PATTERNS.items():
-            for pattern in patterns:
-                if re.search(pattern, message, flags=re.IGNORECASE):
-                    found.append(incident_type)
-                    break
-        return sorted(set(found))
+    def assess_triage(
+        message: str,
+        parsed: IntakeParseResult,
+        crisis_override: dict | None = None,
+    ) -> dict:
+        intake_data = {
+            "normalized_location": parsed.normalized_location,
+            "primary_needs": parsed.primary_needs,
+            "derived_support_needs": parsed.derived_support_needs,
+            "normalized_barriers": parsed.normalized_barriers,
+        }
 
-    @staticmethod
-    def assess_triage(message: str, parsed: IntakeParseResult) -> dict:
-        text = message.strip()
-        rationale: list[str] = []
-        urgency = "standard"
-        safety_risk = "low"
-        escalation_recommended = False
-        escalation_target = None
-        requires_human_review = False
+        llm = GraphCoreLLMClient()
+        result = llm.assess_triage(message, intake_data)
 
-        incident_types = TriageService._detect_incident_types(text)
+        # Normalize enum values (already done by Pydantic in llm_client,
+        # but belt-and-suspenders for safety)
+        urgency = normalize_urgency(result.get("urgency"))
+        safety_risk = normalize_safety_risk(result.get("safety_risk"))
 
-        if any(re.search(p, text, flags=re.IGNORECASE) for p in TriageService.CRITICAL_PATTERNS):
-            urgency = "critical"
-            safety_risk = "immediate"
-            escalation_recommended = True
-            escalation_target = "emergency_response"
-            requires_human_review = True
-            rationale.append("Critical medical risk language detected.")
+        # --- Deterministic crisis safeguard boost ---
+        # If chatbot-service detected crisis keywords, enforce minimum levels.
+        # The LLM can RAISE urgency higher, but never lower it below the
+        # keyword-detected minimum.
+        safeguard_reasons: list[str] = []
 
-        elif any(re.search(p, text, flags=re.IGNORECASE) for p in TriageService.HIGH_RISK_PATTERNS):
-            urgency = "high"
-            safety_risk = "high"
-            escalation_recommended = True
-            escalation_target = "human_case_worker"
-            requires_human_review = True
-            rationale.append("High-risk safety language detected.")
+        if crisis_override:
+            min_urg = normalize_urgency(crisis_override.get("min_urgency"))
+            min_saf = normalize_safety_risk(crisis_override.get("min_safety"))
 
-        elif any(re.search(p, text, flags=re.IGNORECASE) for p in TriageService.URGENT_PATTERNS):
-            urgency = "urgent"
-            safety_risk = "medium"
-            escalation_recommended = True
-            escalation_target = "priority_support_queue"
-            rationale.append("Urgent support language detected.")
+            boosted_urg = boost_urgency(urgency, min_urg)
+            boosted_saf = boost_safety(safety_risk, min_saf)
 
-        if "Emergency Medical" in parsed.primary_needs and urgency == "standard":
-            urgency = "urgent"
-            rationale.append("Emergency Medical need detected.")
+            if boosted_urg != urgency:
+                safeguard_reasons.append(
+                    f"Crisis safeguard boosted urgency from {urgency} to {boosted_urg}"
+                )
+                urgency = boosted_urg
 
-        if "Emergency Shelter" in parsed.primary_needs and urgency == "standard":
-            urgency = "urgent"
-            rationale.append("Emergency Shelter need detected.")
+            if boosted_saf != safety_risk:
+                safeguard_reasons.append(
+                    f"Crisis safeguard boosted safety_risk from {safety_risk} to {boosted_saf}"
+                )
+                safety_risk = boosted_saf
 
-        if "Mental Health Support" in parsed.primary_needs and urgency == "standard":
-            urgency = "urgent"
-            safety_risk = "medium"
-            escalation_recommended = True
-            escalation_target = "priority_support_queue"
-            rationale.append("Mental Health Support need detected.")   
+            # Add crisis keyword reasons to rationale
+            safeguard_reasons.extend(crisis_override.get("reasons", []))
 
-        if parsed.normalized_barriers:
-            rationale.append(f"Barriers detected: {', '.join(parsed.normalized_barriers)}")
-
-        if parsed.normalized_location:
-            rationale.append(f"Location identified: {parsed.normalized_location}")
-
-        if incident_types:
-            rationale.append(f"Incident types inferred: {', '.join(incident_types)}")
+        rationale = result.get("rationale", [])
+        if safeguard_reasons:
+            rationale = safeguard_reasons + rationale
 
         return {
             "urgency": urgency,
             "safety_risk": safety_risk,
-            "incident_types": incident_types,
-            "requires_human_review": requires_human_review,
-            "escalation_recommended": escalation_recommended,
-            "escalation_target": escalation_target,
+            "incident_types": result.get("incident_types", []),
+            "requires_human_review": result.get("requires_human_review", False),
+            "escalation_recommended": urgency in ("critical", "high", "urgent"),
+            "escalation_target": _escalation_target(urgency, safety_risk),
             "rationale": rationale,
         }
+
+
+def _escalation_target(urgency: str, safety_risk: str) -> str | None:
+    """Deterministic escalation target based on urgency/safety."""
+    if urgency == "critical" or safety_risk == "immediate":
+        return "emergency_response"
+    if urgency == "high" or safety_risk == "high":
+        return "human_case_worker"
+    if urgency == "urgent":
+        return "priority_support_queue"
+    return None

@@ -100,6 +100,10 @@ class CaseOrchestrationService:
         triage: dict[str, Any],
         escalation: dict[str, Any],
         create_referrals: bool,
+        latitude: float | None = None,
+        longitude: float | None = None,
+        location_source: str | None = None,
+        location_accuracy: float | None = None,
     ) -> dict[str, Any]:
         survivor = CaseOrchestrationService._create_node(
             db=db,
@@ -111,18 +115,27 @@ class CaseOrchestrationService:
             },
         )
 
+        # Build case metadata with optional GPS coordinates
+        case_meta: dict[str, Any] = {
+            "source": "live_intake",
+            "status": "open",
+            "normalized_location": intake.get("normalized_location"),
+            "urgency": triage.get("urgency"),
+            "safety_risk": triage.get("safety_risk"),
+            "queue": escalation.get("queue"),
+        }
+        if latitude is not None and longitude is not None:
+            case_meta["latitude"] = latitude
+            case_meta["longitude"] = longitude
+            case_meta["location_source"] = location_source or "browser"
+            case_meta["location_accuracy"] = location_accuracy
+            case_meta["location_consent"] = True  # user explicitly shared
+
         case_node = CaseOrchestrationService._create_node(
             db=db,
             node_type="Case",
             label=f"Live Case - {survivor.id}",
-            metadata={
-                "source": "live_intake",
-                "status": "open",
-                "normalized_location": intake.get("normalized_location"),
-                "urgency": triage.get("urgency"),
-                "safety_risk": triage.get("safety_risk"),
-                "queue": escalation.get("queue"),
-            },
+            metadata=case_meta,
         )
 
         assessment_node = CaseOrchestrationService._create_node(
@@ -266,16 +279,40 @@ class CaseOrchestrationService:
         location: str | None = None,
         top_k: int = 5,
         create_referrals: bool = True,
+        pre_parsed: Any | None = None,
+        crisis_override: Any | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
     ) -> dict[str, Any]:
+        # Convert Pydantic models to dicts if needed
+        pre_parsed_dict = None
+        if pre_parsed is not None:
+            pre_parsed_dict = pre_parsed.model_dump() if hasattr(pre_parsed, "model_dump") else pre_parsed
+
+        crisis_dict = None
+        if crisis_override is not None:
+            crisis_dict = crisis_override.model_dump() if hasattr(crisis_override, "model_dump") else crisis_override
+
+        # Resolve coordinates: prefer pre_parsed, fall back to top-level
+        lat = latitude
+        lon = longitude
+        if lat is None and pre_parsed_dict:
+            lat = pre_parsed_dict.get("latitude")
+            lon = pre_parsed_dict.get("longitude")
+
         parsed = IntakeService.parse_message(
             db=db,
             message=message,
             explicit_location=location,
+            pre_parsed=pre_parsed_dict,
+            latitude=lat,
+            longitude=lon,
         )
 
         triage = TriageService.assess_triage(
             message=message,
             parsed=parsed,
+            crisis_override=crisis_dict,
         )
 
         escalation = EscalationService.assess_escalation(
@@ -296,6 +333,13 @@ class CaseOrchestrationService:
             top_k=top_k,
         )
 
+        # Resolve location metadata for persistence
+        loc_source = None
+        loc_accuracy = None
+        if pre_parsed_dict:
+            loc_source = pre_parsed_dict.get("location_source")
+            loc_accuracy = pre_parsed_dict.get("location_accuracy")
+
         persisted = CaseOrchestrationService._persist_case_graph(
             db=db,
             message=message,
@@ -303,6 +347,10 @@ class CaseOrchestrationService:
             triage=triage,
             escalation=escalation,
             create_referrals=create_referrals,
+            latitude=lat,
+            longitude=lon,
+            location_source=loc_source,
+            location_accuracy=loc_accuracy,
         )
 
         summary = (

@@ -2,8 +2,18 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class UserLocation(BaseModel):
+    """User location from browser geolocation or manual entry."""
+    latitude: float
+    longitude: float
+    accuracy: float = 0.0
+    source: str = "browser"  # browser, manual, text_inferred
+    timestamp: str | None = None
+
+
 class StartSessionRequest(BaseModel):
     initial_message: str | None = None
+    location: UserLocation | None = None
 
 
 class StartSessionResponse(BaseModel):
@@ -17,6 +27,7 @@ class StartSessionResponse(BaseModel):
 class SessionMessageRequest(BaseModel):
     message: str = Field(..., min_length=1)
     client_message_id: str | None = None
+    location: UserLocation | None = None
 
 
 class SessionAttachmentResponse(BaseModel):

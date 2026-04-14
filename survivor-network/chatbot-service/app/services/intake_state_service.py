@@ -21,6 +21,10 @@ class IntakeStateService:
             "injury_status": None,
             "primary_need": None,
             "safe_contact_method": None,
+            "latitude": None,
+            "longitude": None,
+            "location_accuracy": None,
+            "location_source": None,
             "attachments": [],
             "history": [],
             "latest_graph_assessment": None,
@@ -28,65 +32,48 @@ class IntakeStateService:
         }
 
     @staticmethod
-    def apply_user_message(state: dict[str, Any], message: str) -> dict[str, Any]:
+    def apply_user_message(
+        state: dict[str, Any],
+        message: str,
+        llm_extracted: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Update state with user message and LLM-extracted fields.
+
+        Args:
+            state: Current intake state dict.
+            message: Raw user message text.
+            llm_extracted: Fields extracted by the LLM from this message.
+                           Keys match REQUIRED_FIELDS, values are the extracted data or None.
+        """
         updated = dict(state)
         updated["history"] = list(updated.get("history", []))
         updated["history"].append({"role": "user", "content": message})
 
-        text = message.lower()
+        if llm_extracted:
+            for field in REQUIRED_FIELDS:
+                new_value = llm_extracted.get(field)
+                if new_value is not None and updated.get(field) is None:
+                    updated[field] = new_value
 
-        if updated.get("incident_summary") is None and len(message.strip()) > 8:
-            updated["incident_summary"] = message.strip()
+        return updated
 
-        if updated.get("location") is None:
-            if "johannesburg" in text or "joburg" in text or "jhb" in text:
-                updated["location"] = "Johannesburg"
+    @staticmethod
+    def apply_bot_message(state: dict[str, Any], message: str) -> dict[str, Any]:
+        """Append a bot message to the conversation history."""
+        updated = dict(state)
+        updated["history"] = list(updated.get("history", []))
+        updated["history"].append({"role": "assistant", "content": message})
+        return updated
 
-        if updated.get("immediate_danger") is None:
-            if (
-                "immediate danger" in text
-                or "not safe" in text
-                or "danger" in text
-                or "unsafe" in text
-            ):
-                updated["immediate_danger"] = True
-            elif "safe now" in text or "not in danger" in text:
-                updated["immediate_danger"] = False
-
-        if updated.get("injury_status") is None:
-            if "bleeding" in text or "injured" in text or "hurt" in text:
-                updated["injury_status"] = "injured"
-            elif "not injured" in text:
-                updated["injury_status"] = "not_injured"
-
-        if updated.get("primary_need") is None:
-            if "medical" in text or "clinic" in text or "bleeding" in text:
-                updated["primary_need"] = "Emergency Medical"
-            elif "shelter" in text or "safe place" in text:
-                updated["primary_need"] = "Emergency Shelter"
-            elif "legal" in text or "protection order" in text:
-                updated["primary_need"] = "Protection Order Support"
-            elif "talk to someone" in text or "traumatized" in text or "counselling" in text:
-                updated["primary_need"] = "Mental Health Support"
-
-        if updated.get("safe_contact_method") is None:
-            if (
-                "text me" in text
-                or "message me" in text
-                or "text is safer" in text
-                or "text is safe" in text
-                or "sms is safer" in text
-                or "message is safer" in text
-            ):
-                updated["safe_contact_method"] = "text"
-            elif (
-                "call me" in text
-                or "phone call" in text
-                or "calling is okay" in text
-                or "you can call" in text
-            ):
-                updated["safe_contact_method"] = "call"
-
+    @staticmethod
+    def apply_location(state: dict[str, Any], location: dict[str, Any]) -> dict[str, Any]:
+        """Apply browser/manual location coordinates to state."""
+        updated = dict(state)
+        if location.get("latitude") is not None:
+            updated["latitude"] = location["latitude"]
+            updated["longitude"] = location["longitude"]
+            updated["location_accuracy"] = location.get("accuracy", 0.0)
+            updated["location_source"] = location.get("source", "browser")
         return updated
 
     @staticmethod

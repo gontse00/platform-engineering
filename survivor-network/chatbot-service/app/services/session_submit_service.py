@@ -1,8 +1,18 @@
+"""Session submit service.
+
+When a session is submitted, we ensure the case-creation call to graph-core
+receives the SAME structured context (pre_parsed, crisis_override, coordinates)
+that was used during the message-time triage.  This prevents divergence between
+assessment and case creation.
+"""
+
 from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.clients.graph_core_client import GraphCoreClient, GraphCoreUnavailableError
 from app.models.session import ChatMessageDB, ChatSessionDB
+from app.services.assessment_context import AssessmentContext
 from app.services.intake_state_service import IntakeStateService
 
 
@@ -71,13 +81,30 @@ class SessionSubmitService:
                 "message": "More information is required before submission.",
             }
 
+        # --- Create case via graph-core if one does not exist yet ---
         if not session.provisional_case_id:
-            incident_summary = state.get("incident_summary") or "User requested help"
+            # Build canonical context from session state — same builder the
+            # message pipeline uses, so the data never diverges.
+            latest_message = state.get("incident_summary") or "User requested help"
+
+            # Reuse the most recent crisis override stored during message flow
+            crisis_data = state.get("latest_crisis_override")
+
+            ctx = AssessmentContext.from_session_state(
+                state=state,
+                latest_message=latest_message,
+                crisis_override=crisis_data,
+            )
+
             graph = GraphCoreClient()
             case_result = graph.create_case(
-                message=incident_summary,
+                message=ctx.message,
                 top_k=5,
                 create_referrals=True,
+                pre_parsed=ctx.pre_parsed,
+                crisis_override=ctx.crisis_override,
+                latitude=ctx.latitude,
+                longitude=ctx.longitude,
             )
             session.provisional_case_id = case_result["persisted"]["case"]["id"]
             session.latest_urgency = case_result["triage"]["urgency"]

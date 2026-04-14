@@ -7,3 +7,5 @@ pydantic-settings
 requests
 python-multipart
 alembic
+openai
+pytest

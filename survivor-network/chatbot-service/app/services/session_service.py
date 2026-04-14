@@ -1,30 +1,51 @@
+import logging
+
 from sqlalchemy.orm import Session
 
+from app.clients.llm_client import LLMClient
 from app.models.session import ChatMessageDB, ChatSessionDB
 from app.services.intake_state_service import IntakeStateService
 from app.services.message_ingestion_service import MessageIngestionService
-from app.services.response_assembly_service import ResponseAssemblyService
+
+logger = logging.getLogger(__name__)
 
 
 class SessionService:
     @staticmethod
-    def start_session(db: Session, initial_message: str | None = None) -> dict:
+    def start_session(db: Session, initial_message: str | None = None, location: dict | None = None) -> dict:
+        initial_state = IntakeStateService.initial_state()
+        if location:
+            initial_state = IntakeStateService.apply_location(initial_state, location)
+
         session = ChatSessionDB(
-            state_json=IntakeStateService.initial_state(),
+            state_json=initial_state,
             status="active",
             stage="initial",
         )
         db.add(session)
         db.flush()
 
-        opening = ResponseAssemblyService.opening_message()
+        try:
+            llm = LLMClient()
+            opening = llm.generate_opening()
+        except Exception:
+            logger.exception("LLM opening generation failed, using fallback")
+            opening = "I'm here to help. You're safe to share what's happening, and I'll do my best to connect you with the right support."
+
+        # Store opening in conversation history
+        state = dict(session.state_json)
+        state["history"] = [{"role": "assistant", "content": opening}]
+        session.state_json = state
+
         db.add(ChatMessageDB(session_id=session.id, role="assistant", content=opening, extracted_json={}))
 
         db.commit()
         db.refresh(session)
 
         if initial_message:
-            return MessageIngestionService.process_user_message(db, session, initial_message, client_message_id=None)
+            return MessageIngestionService.process_user_message(
+                db, session, initial_message, client_message_id=None, location=location,
+            )
 
         return {
             "session_id": str(session.id),

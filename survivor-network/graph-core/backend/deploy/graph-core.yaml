@@ -17,6 +17,7 @@ metadata:
 type: Opaque
 stringData:
   DATABASE_URL: "postgresql://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
+  OPENAI_API_KEY: "${OPENAI_API_KEY}"  # <-- set via CI/CD or kubectl create secret
 
 ---
 apiVersion: apps/v1
@@ -59,6 +60,11 @@ spec:
                 secretKeyRef:
                   name: graph-core-secret
                   key: DATABASE_URL
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: graph-core-secret
+                  key: OPENAI_API_KEY
           readinessProbe:
             httpGet:
               path: /health

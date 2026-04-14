@@ -6,7 +6,7 @@ metadata:
   labels:
     app: chatbot-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: chatbot-service
@@ -48,22 +48,36 @@ spec:
                 secretKeyRef:
                   name: chatbot-service-secret
                   key: DATABASE_URL
+            - name: LLM_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: chatbot-service-config
+                  key: LLM_ENABLED
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: chatbot-service-secret
+                  key: OPENAI_API_KEY
           readinessProbe:
             httpGet:
               path: /health
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /health
               port: 8080
             initialDelaySeconds: 15
-            periodSeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "250m"
+              memory: "256Mi"
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "1000m"
+              memory: "768Mi"

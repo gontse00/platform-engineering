@@ -10,3 +10,5 @@ pydantic-settings
 numpy
 PyYAML
 requests
+openai
+pytest

@@ -1,21 +1,267 @@
 nodes:
+  # Country / Province
   - key: south_africa
     node_type: Location
     label: South Africa
     metadata:
       level: country
+      lat: -30.5595
+      lon: 22.9375
 
   - key: gauteng
     node_type: Location
     label: Gauteng
     metadata:
       level: province
+      lat: -26.2708
+      lon: 28.1123
 
+  # City
   - key: johannesburg
     node_type: Location
     label: Johannesburg
     metadata:
       level: city
+      lat: -26.2041
+      lon: 28.0473
+
+  # --- Soweto & surrounds ---
+  - key: soweto
+    node_type: Location
+    label: Soweto
+    metadata:
+      level: suburb
+      lat: -26.2227
+      lon: 27.8540
+
+  - key: diepkloof
+    node_type: Location
+    label: Diepkloof
+    metadata:
+      level: suburb
+      lat: -26.2425
+      lon: 27.8960
+
+  - key: meadowlands
+    node_type: Location
+    label: Meadowlands
+    metadata:
+      level: suburb
+      lat: -26.2186
+      lon: 27.8895
+
+  - key: orlando
+    node_type: Location
+    label: Orlando
+    metadata:
+      level: suburb
+      lat: -26.2350
+      lon: 27.9050
+
+  - key: dobsonville
+    node_type: Location
+    label: Dobsonville
+    metadata:
+      level: suburb
+      lat: -26.2186
+      lon: 27.8630
+
+  - key: protea_glen
+    node_type: Location
+    label: Protea Glen
+    metadata:
+      level: suburb
+      lat: -26.2800
+      lon: 27.8100
+
+  # --- Inner city ---
+  - key: hillbrow
+    node_type: Location
+    label: Hillbrow
+    metadata:
+      level: suburb
+      lat: -26.1920
+      lon: 28.0480
+
+  - key: berea
+    node_type: Location
+    label: Berea
+    metadata:
+      level: suburb
+      lat: -26.1950
+      lon: 28.0510
+
+  - key: braamfontein
+    node_type: Location
+    label: Braamfontein
+    metadata:
+      level: suburb
+      lat: -26.1930
+      lon: 28.0340
+
+  - key: joubert_park
+    node_type: Location
+    label: Joubert Park
+    metadata:
+      level: suburb
+      lat: -26.1960
+      lon: 28.0450
+
+  - key: johannesburg_cbd
+    node_type: Location
+    label: Johannesburg CBD
+    metadata:
+      level: suburb
+      lat: -26.2041
+      lon: 28.0473
+
+  # --- East ---
+  - key: jeppestown
+    node_type: Location
+    label: Jeppestown
+    metadata:
+      level: suburb
+      lat: -26.2020
+      lon: 28.0600
+
+  - key: kensington
+    node_type: Location
+    label: Kensington
+    metadata:
+      level: suburb
+      lat: -26.1920
+      lon: 28.0780
+
+  - key: alexandra
+    node_type: Location
+    label: Alexandra
+    metadata:
+      level: suburb
+      lat: -26.1060
+      lon: 28.0920
+
+  # --- North ---
+  - key: sandton
+    node_type: Location
+    label: Sandton
+    metadata:
+      level: suburb
+      lat: -26.1076
+      lon: 28.0567
+
+  - key: randburg
+    node_type: Location
+    label: Randburg
+    metadata:
+      level: suburb
+      lat: -26.0936
+      lon: 28.0060
+
+  - key: rosebank
+    node_type: Location
+    label: Rosebank
+    metadata:
+      level: suburb
+      lat: -26.1460
+      lon: 28.0440
+
+  - key: parktown
+    node_type: Location
+    label: Parktown
+    metadata:
+      level: suburb
+      lat: -26.1770
+      lon: 28.0370
+
+  - key: melville
+    node_type: Location
+    label: Melville
+    metadata:
+      level: suburb
+      lat: -26.1780
+      lon: 28.0080
+
+  - key: diepsloot
+    node_type: Location
+    label: Diepsloot
+    metadata:
+      level: suburb
+      lat: -25.9320
+      lon: 28.0140
+
+  # --- South ---
+  - key: lenasia
+    node_type: Location
+    label: Lenasia
+    metadata:
+      level: suburb
+      lat: -26.3200
+      lon: 27.8400
+
+  - key: eldorado_park
+    node_type: Location
+    label: Eldorado Park
+    metadata:
+      level: suburb
+      lat: -26.2870
+      lon: 27.9030
+
+  - key: ennerdale
+    node_type: Location
+    label: Ennerdale
+    metadata:
+      level: suburb
+      lat: -26.3400
+      lon: 27.8500
+
+  # --- West ---
+  - key: roodepoort
+    node_type: Location
+    label: Roodepoort
+    metadata:
+      level: suburb
+      lat: -26.1625
+      lon: 27.8725
+
+  - key: westbury
+    node_type: Location
+    label: Westbury
+    metadata:
+      level: suburb
+      lat: -26.2000
+      lon: 27.9920
+
+  - key: auckland_park
+    node_type: Location
+    label: Auckland Park
+    metadata:
+      level: suburb
+      lat: -26.1840
+      lon: 28.0060
+
+  - key: bertrams
+    node_type: Location
+    label: Bertrams
+    metadata:
+      level: suburb
+      lat: -26.2020
+      lon: 28.0640
+
+  - key: coronationville
+    node_type: Location
+    label: Coronationville
+    metadata:
+      level: suburb
+      lat: -26.1900
+      lon: 27.9900
+
+  - key: hurlingham
+    node_type: Location
+    label: Hurlingham
+    metadata:
+      level: suburb
+      lat: -26.1300
+      lon: 28.0400
 
 edges:
   - from: gauteng
@@ -25,5 +271,123 @@ edges:
 
   - from: johannesburg
     to: gauteng
+    edge_type: LOCATED_IN
+    metadata: {}
+
+  # Suburbs → Johannesburg
+  - from: soweto
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: diepkloof
+    to: soweto
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: meadowlands
+    to: soweto
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: orlando
+    to: soweto
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: dobsonville
+    to: soweto
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: protea_glen
+    to: soweto
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: hillbrow
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: berea
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: braamfontein
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: joubert_park
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: johannesburg_cbd
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: jeppestown
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: kensington
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: alexandra
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: sandton
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: randburg
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: rosebank
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: parktown
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: melville
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: diepsloot
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: lenasia
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: eldorado_park
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: ennerdale
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: roodepoort
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: westbury
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: auckland_park
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: bertrams
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: coronationville
+    to: johannesburg
+    edge_type: LOCATED_IN
+    metadata: {}
+  - from: hurlingham
+    to: johannesburg
     edge_type: LOCATED_IN
     metadata: {}

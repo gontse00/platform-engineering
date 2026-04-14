@@ -1,7 +1,20 @@
-import re
-from dataclasses import dataclass
+"""Intake parsing service.
+
+Now accepts pre-parsed data from chatbot-service to avoid redundant LLM calls.
+Falls back to basic text extraction if no pre-parsed data is provided.
+
+Coordinates (latitude/longitude) are preserved through the full parse result
+so downstream routing and ranking can use them.
+"""
+
+import logging
+from dataclasses import dataclass, field
+
 from sqlalchemy.orm import Session
+
 from models.graph import GraphNodeDB
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -11,147 +24,22 @@ class IntakeParseResult:
     primary_needs: list[str]
     derived_support_needs: list[str]
     normalized_barriers: list[str]
+    # Coordinates — carried through from pre_parsed or request-level fields
+    latitude: float | None = None
+    longitude: float | None = None
+    location_accuracy: float | None = None
+    location_source: str | None = None  # browser, manual, text_inferred
 
 
 class IntakeService:
-    """
-    Deterministic text normalizer that maps free-text user input
-    into ontology labels already present in the graph.
-    """
-
-    NEED_PATTERNS: dict[str, list[str]] = {
-        "Emergency Medical": [
-            r"\bmedical help\b",
-            r"\bneed medical\b",
-            r"\bclinic\b",
-            r"\bhospital\b",
-            r"\binjured\b",
-            r"\bemergency\b",
-            r"\bbleeding\b",
-            r"\bdoctor\b",
-            r"\bambulance\b",
-            r"\bmedical attention\b",
-        ],
-        "Medication Access": [
-            r"\bmedication\b",
-            r"\bmedicine\b",
-            r"\bpills\b",
-            r"\bprescription\b",
-            r"\bno medication\b",
-            r"\bout of medicine\b",
-        ],
-        "Mental Health Support": [
-            r"\btrauma\b",
-            r"\btraumatized\b",
-            r"\btraumatised\b",
-            r"\banxiety\b",
-            r"\bpanic\b",
-            r"\bmental health\b",
-            r"\bcounselling\b",
-            r"\bcounseling\b",
-            r"\bneed someone to talk to\b",
-            r"\bneed to talk to someone\b",
-            r"\bneed support\b",
-            r"\bi need support\b",
-            r"\bemotional support\b",
-            r"\bcrisis support\b",
-            r"\bi am overwhelmed\b",
-            r"\bi feel unsafe and overwhelmed\b",
-            r"\btherapy\b",
-            r"\bneed counselling\b",
-            r"\bneed counseling\b",
-        ],
-        "Emergency Shelter": [
-            r"\bshelter\b",
-            r"\bnowhere to stay\b",
-            r"\bno place to sleep\b",
-            r"\bsafe house\b",
-            r"\bunsafe home\b",
-            r"\bsafe place to stay\b",
-            r"\bsomewhere safe\b",
-            r"\bplace to stay\b",
-            r"\bnowhere to sleep\b",
-            r"\bscared to go home\b",
-            r"\bsomewhere safe to stay\b",
-            r"\bsafe to stay\b",
-            r"\bstay tonight\b",
-            r"\bnot safe at home\b",
-        ],
-        "Protection Order Support": [
-            r"\bprotection order\b",
-            r"\blegal help\b",
-            r"\bcourt\b",
-            r"\bpolice report\b",
-            r"\brestraining order\b",
-            r"\babuse\b",
-            r"\bthreatened me\b",
-            r"\bpartner threatened me\b",
-        ],
-        "Transport": [
-            r"\bneed transport\b",
-            r"\bneed a ride\b",
-            r"\bneed taxi\b",
-            r"\btransport assistance\b",
-            r"\bhelp me get there\b",
-            r"\bget to the clinic\b",
-            r"\bget to hospital\b",
-        ],
-    }
-
-    BARRIER_PATTERNS: dict[str, list[str]] = {
-        "No Transport": [
-            r"\bno transport\b",
-            r"\bcan.?t travel\b",
-            r"\bno taxi\b",
-            r"\bno money for transport\b",
-            r"\bstranded\b",
-            r"\bneed a ride\b",
-        ],
-        "No Phone": [
-            r"\bno phone\b",
-            r"\bphone stolen\b",
-            r"\bcan.?t call\b",
-            r"\bno airtime\b",
-        ],
-        "Unsafe To Travel": [
-            r"\bunsafe to travel\b",
-            r"\bnot safe to leave\b",
-            r"\bafraid to go out\b",
-            r"\bscared to leave\b",
-        ],
-        "No ID Document": [
-            r"\bno id\b",
-            r"\bmissing id\b",
-            r"\bno document\b",
-            r"\bno id document\b",
-        ],
-    }
-
-    LOCATION_ALIASES: dict[str, list[str]] = {
-        "Johannesburg": [r"\bjohannesburg\b", r"\bjoburg\b", r"\bjhb\b", r"\bjozi\b"],
-        "Gauteng": [r"\bgauteng\b"],
-        "South Africa": [r"\bsouth africa\b", r"\bza\b", r"\brsa\b"],
-    }
-
-    BARRIER_TO_SUPPORT_NEED: dict[str, str] = {
-        "No Transport": "Transport",
-        "No Phone": "Transport",
-        "Unsafe To Travel": "Transport",
-        "No ID Document": "Protection Order Support",
-    }
-
-    @staticmethod
-    def _find_matches(text: str, pattern_map: dict[str, list[str]]) -> list[str]:
-        matches: list[str] = []
-        for label, patterns in pattern_map.items():
-            for pattern in patterns:
-                if re.search(pattern, text, flags=re.IGNORECASE):
-                    matches.append(label)
-                    break
-        return matches
+    """Intake parser that maps structured data into ontology labels."""
 
     @staticmethod
     def _resolve_known_label(db: Session, label: str, allowed_types: list[str]) -> str | None:
+        """Look up a label in the graph to get the canonical version."""
+        if not label:
+            return None
+        # Try exact match first
         node = (
             db.query(GraphNodeDB)
             .filter(
@@ -160,93 +48,175 @@ class IntakeService:
             )
             .first()
         )
+        if node:
+            return node.label
+
+        # Try case-insensitive match
+        node = (
+            db.query(GraphNodeDB)
+            .filter(
+                GraphNodeDB.label.ilike(label),
+                GraphNodeDB.node_type.in_(allowed_types),
+            )
+            .first()
+        )
         return node.label if node else None
 
     @staticmethod
-    def parse_message(db: Session, message: str, explicit_location: str | None = None) -> IntakeParseResult:
-        text = message.strip()
+    def parse_message(
+        db: Session,
+        message: str,
+        explicit_location: str | None = None,
+        pre_parsed: dict | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> IntakeParseResult:
+        """Parse intake from pre-parsed data or basic text extraction.
 
-        normalized_barriers = IntakeService._find_matches(text, IntakeService.BARRIER_PATTERNS)
-        matched_needs = IntakeService._find_matches(text, IntakeService.NEED_PATTERNS)
+        Args:
+            db: Database session for resolving graph labels.
+            message: Raw user message text.
+            explicit_location: Optional explicit location override.
+            pre_parsed: Pre-parsed data from chatbot-service LLM.
+                        Expected keys: location, primary_needs, barriers,
+                                       incident_summary, immediate_danger, injury_status,
+                                       latitude, longitude, location_accuracy, location_source
+            latitude: Top-level latitude (fallback if not in pre_parsed).
+            longitude: Top-level longitude (fallback if not in pre_parsed).
+        """
+        # Extract coordinates — prefer pre_parsed, fall back to top-level args
+        coord_lat: float | None = None
+        coord_lon: float | None = None
+        coord_accuracy: float | None = None
+        coord_source: str | None = None
 
-        primary_needs: list[str] = []
-        derived_support_needs: list[str] = []
+        if pre_parsed:
+            # Use pre-parsed data from chatbot-service (avoids LLM call)
+            # Handle both Pydantic models and plain dicts
+            if hasattr(pre_parsed, "model_dump"):
+                pre_parsed = pre_parsed.model_dump()
+            raw_location = pre_parsed.get("location") or explicit_location
+            primary_needs = pre_parsed.get("primary_needs", [])
+            barriers = pre_parsed.get("barriers", [])
 
-        for need in matched_needs:
-            if need == "Transport":
-                if need not in derived_support_needs:
-                    derived_support_needs.append(need)
-            else:
-                if need not in primary_needs:
-                    primary_needs.append(need)
-
-        normalized_location: str | None = None
-
-        if explicit_location:
-            normalized_location = IntakeService._resolve_known_label(
-                db,
-                explicit_location,
-                ["Location"],
-            ) or explicit_location
+            # Coordinates from pre_parsed
+            coord_lat = pre_parsed.get("latitude")
+            coord_lon = pre_parsed.get("longitude")
+            coord_accuracy = pre_parsed.get("location_accuracy")
+            coord_source = pre_parsed.get("location_source")
         else:
-            for label, patterns in IntakeService.LOCATION_ALIASES.items():
-                if any(re.search(p, text, flags=re.IGNORECASE) for p in patterns):
-                    normalized_location = (
-                        IntakeService._resolve_known_label(db, label, ["Location"]) or label
-                    )
-                    break
+            # No pre-parsed data — use basic extraction from message text
+            # (This is the fallback path when chatbot-service is unavailable)
+            raw_location = explicit_location
+            primary_needs = _extract_needs_from_text(message)
+            barriers = _extract_barriers_from_text(message)
 
-        if not primary_needs:
-            if re.search(
-                r"\bmedical\b|\bdoctor\b|\bclinic\b|\bhospital\b|\bbleeding\b",
-                text,
-                flags=re.IGNORECASE,
-            ):
-                primary_needs.append("Emergency Medical")
-            if re.search(
-                r"\bshelter\b|\bsafe\b|\bstay\b|\bhome\b",
-                text,
-                flags=re.IGNORECASE,
-            ):
-                primary_needs.append("Emergency Shelter")
-            if re.search(
-                r"\blegal\b|\bprotection order\b|\bcourt\b|\bpolice\b",
-                text,
-                flags=re.IGNORECASE,
-            ):
-                primary_needs.append("Protection Order Support")
-            if re.search(
-                r"\btrauma\b|\btraumatized\b|\bcounselling\b|\bcounseling\b|\boverwhelmed\b",
-                text,
-                flags=re.IGNORECASE,
-            ):
-                primary_needs.append("Mental Health Support")
+        # Top-level coordinates override if pre_parsed didn't have them
+        if coord_lat is None and latitude is not None:
+            coord_lat = latitude
+            coord_lon = longitude
 
-        for barrier in normalized_barriers:
-            support_need = IntakeService.BARRIER_TO_SUPPORT_NEED.get(barrier)
-            if support_need and support_need not in derived_support_needs:
-                derived_support_needs.append(support_need)
+        # Resolve location against known graph nodes
+        normalized_location: str | None = None
+        if raw_location:
+            normalized_location = (
+                IntakeService._resolve_known_label(db, raw_location, ["Location"])
+                or raw_location
+            )
 
-        primary_needs = sorted(set(primary_needs))
-        derived_support_needs = sorted(
-            set(n for n in derived_support_needs if n not in primary_needs)
-        )
+        # Resolve needs against known graph node labels
+        resolved_primary: list[str] = []
+        for need in primary_needs:
+            resolved = IntakeService._resolve_known_label(
+                db, need, ["NeedType", "NeedCategory"]
+            )
+            resolved_primary.append(resolved or need)
 
-        for barrier in normalized_barriers:
-            support_need = IntakeService.BARRIER_TO_SUPPORT_NEED.get(barrier)
-            if support_need and support_need in primary_needs:
-                primary_needs.remove(support_need)
-                if support_need not in derived_support_needs:
-                    derived_support_needs.append(support_need)
+        # Derive support needs from barriers
+        derived_support: list[str] = []
+        for barrier in barriers:
+            if "transport" in barrier.lower():
+                derived_support.append("Transport")
 
-        primary_needs = sorted(set(primary_needs))
-        derived_support_needs = sorted(set(derived_support_needs))
-        normalized_barriers = sorted(set(normalized_barriers))
+        resolved_barriers: list[str] = []
+        for barrier in barriers:
+            resolved = IntakeService._resolve_known_label(db, barrier, ["Barrier"])
+            resolved_barriers.append(resolved or barrier)
 
         return IntakeParseResult(
             message=message,
             normalized_location=normalized_location,
-            primary_needs=primary_needs,
-            derived_support_needs=derived_support_needs,
-            normalized_barriers=normalized_barriers,
+            primary_needs=sorted(set(resolved_primary)),
+            derived_support_needs=sorted(
+                set(n for n in derived_support if n not in resolved_primary)
+            ),
+            normalized_barriers=sorted(set(resolved_barriers)),
+            latitude=coord_lat,
+            longitude=coord_lon,
+            location_accuracy=coord_accuracy,
+            location_source=coord_source,
         )
+
+
+# ---------------------------------------------------------------------------
+# Basic text extraction fallbacks (no LLM needed)
+# ---------------------------------------------------------------------------
+
+_NEED_KEYWORDS: dict[str, str] = {
+    "bleed": "Emergency Medical",
+    "injur": "Emergency Medical",
+    "hospital": "Emergency Medical",
+    "ambulance": "Emergency Medical",
+    "medic": "Emergency Medical",
+    "medication": "Medication Access",
+    "prescription": "Medication Access",
+    "pills": "Medication Access",
+    "counsel": "Mental Health Support",
+    "trauma": "Mental Health Support",
+    "anxiety": "Mental Health Support",
+    "depress": "Mental Health Support",
+    "mental": "Mental Health Support",
+    "shelter": "Emergency Shelter",
+    "homeless": "Emergency Shelter",
+    "nowhere to stay": "Emergency Shelter",
+    "safe place": "Emergency Shelter",
+    "legal": "Protection Order Support",
+    "protection order": "Protection Order Support",
+    "restraining": "Protection Order Support",
+    "court": "Protection Order Support",
+    "transport": "Transport",
+    "ride": "Transport",
+    "stranded": "Transport",
+}
+
+_BARRIER_KEYWORDS: dict[str, str] = {
+    "no transport": "No Transport",
+    "can't travel": "No Transport",
+    "no taxi": "No Transport",
+    "no phone": "No Phone",
+    "phone stolen": "No Phone",
+    "no airtime": "No Phone",
+    "unsafe to travel": "Unsafe To Travel",
+    "afraid to go out": "Unsafe To Travel",
+    "scared to leave": "Unsafe To Travel",
+    "no id": "No ID Document",
+    "no identity": "No ID Document",
+}
+
+
+def _extract_needs_from_text(message: str) -> list[str]:
+    lower = message.lower()
+    found: set[str] = set()
+    for keyword, need in _NEED_KEYWORDS.items():
+        if keyword in lower:
+            found.add(need)
+    return sorted(found)
+
+
+def _extract_barriers_from_text(message: str) -> list[str]:
+    lower = message.lower()
+    found: set[str] = set()
+    for keyword, barrier in _BARRIER_KEYWORDS.items():
+        if keyword in lower:
+            found.add(barrier)
+    return sorted(found)

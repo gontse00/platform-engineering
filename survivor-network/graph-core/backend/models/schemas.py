@@ -1,8 +1,20 @@
+"""Pydantic schemas for graph-core API.
+
+Fixed: removed duplicate EscalationAction/EscalationAssessment classes.
+Added: pre_parsed and crisis_override fields to triage/case request models.
+"""
+
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator, BaseModel
+
+from pydantic import BaseModel, Field, field_validator
 from domain.constants import ALLOWED_EDGE_TYPES, ALLOWED_NODE_TYPES
 from typing import Any, Dict, List, Optional
+
+
+# ---------------------------------------------------------------------------
+# Triage / Escalation response models
+# ---------------------------------------------------------------------------
 
 class EscalationAction(BaseModel):
     action: str
@@ -17,12 +29,6 @@ class EscalationAssessment(BaseModel):
     queue: str | None
     handoff_required: bool
     actions: list[EscalationAction]
-
-
-class TriageAssessRequest(BaseModel):
-    message: str = Field(..., min_length=3)
-    location: str | None = None
-    top_k: int = Field(default=5, ge=1, le=20)
 
 
 class TriageAssessment(BaseModel):
@@ -35,24 +41,51 @@ class TriageAssessment(BaseModel):
     rationale: list[str]
 
 
-class EscalationAction(BaseModel):
-    action: str
-    target: str | None
-    priority: str
-    reason: str
-
-
-class EscalationAssessment(BaseModel):
-    escalate: bool
-    level: str
-    queue: str | None
-    handoff_required: bool
-    actions: list[EscalationAction]
-
 class EscalationDestination(BaseModel):
     kind: str
     reason: str
     node: dict[str, Any] | None = None
+
+
+# ---------------------------------------------------------------------------
+# Pre-parsed data from chatbot-service (avoids redundant LLM calls)
+# ---------------------------------------------------------------------------
+
+class PreParsedIntake(BaseModel):
+    """Structured intake data already extracted by chatbot-service LLM."""
+    location: str | None = None
+    primary_needs: list[str] = Field(default_factory=list)
+    barriers: list[str] = Field(default_factory=list)
+    immediate_danger: bool | None = None
+    injury_status: str | None = None
+    incident_summary: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    location_accuracy: float | None = None
+    location_source: str | None = None  # browser, manual, text_inferred
+
+
+class CrisisOverride(BaseModel):
+    """Deterministic crisis safeguard data from chatbot-service."""
+    min_urgency: str = "standard"
+    min_safety: str = "low"
+    reasons: list[str] = Field(default_factory=list)
+    immediate_danger: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Triage API request/response
+# ---------------------------------------------------------------------------
+
+class TriageAssessRequest(BaseModel):
+    message: str = Field(..., min_length=3)
+    location: str | None = None
+    top_k: int = Field(default=5, ge=1, le=20)
+    pre_parsed: PreParsedIntake | None = None
+    crisis_override: CrisisOverride | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+
 
 class TriageAssessResponse(BaseModel):
     message: str
@@ -60,6 +93,11 @@ class TriageAssessResponse(BaseModel):
     escalation: EscalationAssessment
     escalation_destinations: list[EscalationDestination]
     intake: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Intake assessment request/response
+# ---------------------------------------------------------------------------
 
 class IntakeAssessRequest(BaseModel):
     message: str = Field(..., min_length=3, description="Free-text intake message from user")
@@ -89,6 +127,10 @@ class IntakeAssessResponse(BaseModel):
     ranked_destinations: list[dict[str, Any]] = Field(default_factory=list)
     routing_summary: dict[str, Any] | None = None
 
+
+# ---------------------------------------------------------------------------
+# Graph node/edge CRUD
+# ---------------------------------------------------------------------------
 
 class NodeCreate(BaseModel):
     node_type: str
@@ -162,6 +204,10 @@ class NeighborResponse(BaseModel):
     metadata: Dict[str, Any]
 
 
+# ---------------------------------------------------------------------------
+# Case models
+# ---------------------------------------------------------------------------
+
 class CaseGraphResponse(BaseModel):
     case: NodeResponse
     neighbors: list[NeighborResponse]
@@ -214,6 +260,11 @@ class NodeUpdate(BaseModel):
 class EdgeUpdate(BaseModel):
     metadata: Dict[str, Any] | None = None
 
+
+# ---------------------------------------------------------------------------
+# Search models
+# ---------------------------------------------------------------------------
+
 class SearchDocumentResponse(BaseModel):
     id: UUID
     doc_type: str
@@ -254,11 +305,20 @@ class SemanticSearchResultsResponse(BaseModel):
     limit: int
     results: list[SemanticSearchDocumentResponse]
 
+
+# ---------------------------------------------------------------------------
+# Case intake / context update
+# ---------------------------------------------------------------------------
+
 class CaseIntakeRequest(BaseModel):
     message: str = Field(..., min_length=3)
     location: str | None = None
     top_k: int = Field(default=5, ge=1, le=20)
     create_referrals: bool = True
+    pre_parsed: PreParsedIntake | None = None
+    crisis_override: CrisisOverride | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class PersistedCaseNodes(BaseModel):
@@ -304,6 +364,11 @@ class CaseTimelineEvent(BaseModel):
 class CaseTimelineResponse(BaseModel):
     case_id: str
     events: list[CaseTimelineEvent] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Routing / scoring models
+# ---------------------------------------------------------------------------
 
 class RouteScoreBreakdown(BaseModel):
     need_match: float = 0.0

@@ -24,6 +24,10 @@ def intake_case(payload: CaseIntakeRequest, db: Session = Depends(get_db)):
         location=payload.location,
         top_k=payload.top_k,
         create_referrals=payload.create_referrals,
+        pre_parsed=payload.pre_parsed,
+        crisis_override=payload.crisis_override,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
     )
 
 
