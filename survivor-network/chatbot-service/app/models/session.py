@@ -42,6 +42,8 @@ class ChatMessageDB(Base):
     content: Mapped[str] = mapped_column(Text)
     client_message_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     extracted_json: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSONB), default=dict)
+    agent_reasoning_json: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSONB), nullable=True)
+    safety_flags_json: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSONB), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     session: Mapped["ChatSessionDB"] = relationship(back_populates="messages")

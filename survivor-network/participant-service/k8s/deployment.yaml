@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: participant-service-config
+  namespace: survivor-apps
+data:
+  SERVICE_NAME: "participant-service"
+  DATABASE_URL: "postgresql+psycopg2://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: participant-service
+  namespace: survivor-apps
+  labels:
+    app: participant-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: participant-service
+  template:
+    metadata:
+      labels:
+        app: participant-service
+    spec:
+      containers:
+        - name: participant-service
+          image: participant-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: participant-service-config
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: participant-service
+  namespace: survivor-apps
+spec:
+  selector:
+    app: participant-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: participant-service-ingress
+  namespace: survivor-apps
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: participant-service.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: participant-service
+                port:
+                  number: 8080

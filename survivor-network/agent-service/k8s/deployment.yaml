@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-service-config
+  namespace: survivor-apps
+data:
+  APP_NAME: "agent-service"
+  ENVIRONMENT: "dev"
+  LLM_ENABLED: "false"
+  OPENAI_MODEL: "gpt-4o-mini"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-service
+  namespace: survivor-apps
+  labels:
+    app: agent-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-service
+  template:
+    metadata:
+      labels:
+        app: agent-service
+    spec:
+      containers:
+        - name: agent-service
+          image: agent-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-service-config
+                  key: APP_NAME
+            - name: LLM_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-service-config
+                  key: LLM_ENABLED
+            - name: OPENAI_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-service-config
+                  key: OPENAI_MODEL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-service
+  namespace: survivor-apps
+  labels:
+    app: agent-service
+spec:
+  selector:
+    app: agent-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

@@ -14,12 +14,18 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.clients.agent_service_client import (
+    AgentServiceClient,
+    AgentServiceUnavailableError,
+    AGENT_FALLBACK_RESPONSE,
+)
 from app.clients.graph_core_client import GraphCoreClient, GraphCoreUnavailableError
 from app.clients.llm_client import LLMClient
 from app.domain.constants import PrimaryNeed
 from app.models.session import ChatMessageDB, ChatSessionDB
 from app.services.assessment_context import AssessmentContext
 from app.services.intake_state_service import IntakeStateService
+from app.services.safety_check import run_safety_check
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +122,31 @@ class MessageIngestionService:
         history = list(current_state.get("history", []))
         history.append({"role": "user", "content": message})
 
+        # --- Deterministic safety check (runs BEFORE any agent/LLM) ---
+        safety_flags = run_safety_check(message)
+
+        # --- Call agent-service for reasoning ---
+        agent_result = None
+        try:
+            agent_client = AgentServiceClient()
+            agent_result = agent_client.reason(
+                session_id=str(session.id),
+                message=message,
+                conversation_context={
+                    "known_location": current_state.get("location"),
+                    "known_primary_need": current_state.get("primary_need"),
+                    "known_injury_status": current_state.get("injury_status"),
+                    "known_contact_method": current_state.get("safe_contact_method"),
+                    "known_incident_summary": current_state.get("incident_summary"),
+                    "conversation_history": history[-6:],  # last 6 messages for context
+                },
+                safety_flags=safety_flags,
+            )
+        except AgentServiceUnavailableError:
+            logger.warning("agent-service unavailable — using fallback")
+            agent_result = AGENT_FALLBACK_RESPONSE
+
+        # --- Also run existing LLM path for backward compatibility ---
         llm = LLMClient()
         llm_result = llm.process_message(
             conversation_history=history,
@@ -230,6 +261,8 @@ class MessageIngestionService:
                 content=message,
                 client_message_id=client_message_id,
                 extracted_json=extracted_fields if extracted_fields else {},
+                agent_reasoning_json=agent_result,
+                safety_flags_json=safety_flags,
             )
         )
         db.add(

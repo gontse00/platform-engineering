@@ -1,124 +1,40 @@
-                              ┌──────────────────────────────────────┐
-                              │          User / Client               │
-                              │ chatbot UI, web app, curl, future    │
-                              │ mobile / WhatsApp / frontend         │
-                              └──────────────────┬───────────────────┘
-                                                 │
-                                                 ▼
-                              ┌──────────────────────────────────────┐
-                              │        Chatbot Service API           │
-                              │ /health                              │
-                              │ /sessions/start                      │
-                              │ /sessions/{id}                       │
-                              │ /sessions/{id}/message               │
-                              │ /sessions/{id}/attachments           │
-                              │ /sessions/{id}/submit               │
-                              └──────────────────┬───────────────────┘
-                                                 │
-                      ┌──────────────────────────┼──────────────────────────┐
-                      │                          │                          │
-                      ▼                          ▼                          ▼
-        ┌────────────────────────┐   ┌────────────────────────┐   ┌────────────────────────┐
-        │  Session Service       │   │ Message Ingestion      │   │ Attachment Service     │
-        │ create / track chat    │   │ update intake state,   │   │ save image / voice /   │
-        │ sessions + lifecycle   │   │ call graph-core, ask   │   │ video metadata         │
-        │                        │   │ next question          │   │                        │
-        └─────────────┬──────────┘   └─────────────┬──────────┘   └─────────────┬──────────┘
-                      │                            │                            │
-                      ▼                            ▼                            ▼
-        ┌────────────────────────┐   ┌────────────────────────┐   ┌────────────────────────┐
-        │ Intake State Service   │   │ Question Planner       │   │ Response Assembly      │
-        │ collected fields,      │   │ next missing field /   │   │ safe conversational    │
-        │ missing fields,        │   │ next bot question      │   │ response formatting    │
-        │ provisional state      │   │                        │   │                        │
-        └─────────────┬──────────┘   └─────────────┬──────────┘   └─────────────┬──────────┘
-                      │                            │                            │
-                      └──────────────┬─────────────┴──────────────┬─────────────┘
-                                     │                            │
-                                     ▼                            ▼
-                    ┌──────────────────────────────────────┐   ┌──────────────────────────┐
-                    │     Chatbot Service PostgreSQL       │   │     File Storage         │
-                    │ chat_sessions                        │   │ image / voice / video    │
-                    │ chat_messages                        │   │ attachments              │
-                    │ chat_attachments                     │   │                          │
-                    └──────────────────┬───────────────────┘   └──────────────────────────┘
-                                       │
-                                       ▼
-                    ┌──────────────────────────────────────┐
-                    │        Graph-Core FastAPI API        │
-                    │ /health                              │
-                    │ /graph/*                             │
-                    │ /search, /search/semantic            │
-                    │ /intake/assess                       │
-                    │ /triage/assess                       │
-                    │ /cases/intake                        │
-                    └──────────────────┬───────────────────┘
-                                       │
-             ┌─────────────────────────┼─────────────────────────┐
-             │                         │                         │
-             ▼                         ▼                         ▼
-┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐
-│     Graph Service      │  │     Search Service     │  │     Intake Service     │
-│ nodes, edges,          │  │ keyword + semantic     │  │ parse free text into   │
-│ neighbors, support     │  │ search over documents  │  │ location / needs /     │
-│ options, case graph    │  │ and embeddings         │  │ barriers               │
-└─────────────┬──────────┘  └─────────────┬──────────┘  └─────────────┬──────────┘
-              │                           │                           │
-              │                           │                           ▼
-              │                           │              ┌────────────────────────┐
-              │                           │              │     Triage Service     │
-              │                           │              │ urgency, safety risk,  │
-              │                           │              │ incident classification│
-              │                           │              └─────────────┬──────────┘
-              │                           │                            │
-              │                           │                            ▼
-              │                           │              ┌────────────────────────┐
-              │                           │              │   Escalation Services   │
-              │                           │              │ escalation decision +   │
-              │                           │              │ destination resolver    │
-              │                           │              └─────────────┬──────────┘
-              │                           │                            │
-              │                           │                            ▼
-              │                           │              ┌────────────────────────┐
-              │                           │              │ Recommendation Service │
-              │                           │              │ combine graph matches  │
-              │                           │              │ + semantic results     │
-              │                           │              └─────────────┬──────────┘
-              │                           │                            │
-              │                           │                            ▼
-              │                           │              ┌────────────────────────┐
-              │                           │              │ Case Orchestration     │
-              │                           │              │ create survivor / case │
-              │                           │              │ assessment / referrals │
-              │                           │              └─────────────┬──────────┘
-              │                           │                            │
-              └──────────────┬────────────┴──────────────┬─────────────┘
-                             │                           │
-                             ▼                           ▼
-               ┌────────────────────────┐   ┌────────────────────────────┐
-               │  Graph Data Layer      │   │   Search Document Layer    │
-               │ nodes / edges          │   │ searchable support docs    │
-               │ taxonomy / live cases  │   │ built from graph views     │
-               │ resources / helpers    │   │ + stored embeddings        │
-               │ assessments / referrals│   │                            │
-               └─────────────┬──────────┘   └─────────────┬──────────────┘
-                             │                            │
-                             └──────────────┬─────────────┘
-                                            ▼
-                              ┌───────────────────────────┐
-                              │     Graph-Core Postgres   │
-                              │ graph tables              │
-                              │ search_documents          │
-                              │ JSON/metadata             │
-                              │ vector embeddings         │
-                              └─────────────┬─────────────┘
-                                            │
-                                            ▼
-                         ┌──────────────────────────────────────┐
-                         │     Seeded Source-of-Truth Layer     │
-                         │ reference taxonomies                 │
-                         │ locations / organizations            │
-                         │ resources / statuses                 │
-                         │ scenario YAML seeds + generated      │
-                         │ scenarios for coverage testing       │
-                         └──────────────────────────────────────┘
+TODO - Service wiring roadmap
+
+1. Move case ownership from graph-core to incident-service
+   - chatbot-service should call incident-service /cases/from-intake
+   - incident-service should call graph-core to create/link graph context
+   - graph-core should remain responsible for resource matching and relationships
+
+2. Complete participant-service
+   - participant profiles
+   - roles and skills
+   - availability
+   - verification
+   - search-available endpoint
+   - eligibility filtering
+
+3. Use admin-service for workflow actions
+   - recommend participants
+   - assign participants
+   - verify helpers
+   - escalate cases
+   - update case status
+
+4. Keep admin-ui direct graph-core reads temporarily
+   - case list
+   - stats
+   - SSE stream
+   - nearby resources
+   - migrate these reads to admin-service later
+
+5. Add notification-service
+   - start as logging/outbox service
+   - later integrate SMS/WhatsApp/email/push
+
+6. Add attachment-service
+   - evidence uploads
+   - voice notes
+   - videos
+   - documents
+   - MinIO storage
+   - case attachment links

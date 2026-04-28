@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rescue Net — Clean Service Architecture</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: #0f1117;
+  color: #e6edf3;
+  padding: 28px;
+}
+h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.subtitle {
+  text-align: center;
+  color: #8b949e;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 22px auto 8px;
+  max-width: 1200px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8b949e;
+  font-size: 13px;
+}
+.legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c9d1d9;
+  text-align: center;
+  margin: 34px 0 14px;
+}
+.details {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+.card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 14px;
+  padding: 18px;
+}
+.card h3 {
+  font-size: 15px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card h3 .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.card ul {
+  list-style: none;
+  color: #9da7b3;
+  font-size: 13px;
+}
+.card li {
+  position: relative;
+  padding: 4px 0 4px 16px;
+}
+.card li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #30363d;
+}
+.card code {
+  background: #1c2128;
+  color: #79c0ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.note {
+  max-width: 1200px;
+  margin: 18px auto 0;
+  color: #8b949e;
+  font-size: 13px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<h1>Rescue Net — Clean Service Architecture</h1>
+<p class="subtitle">Safety-first request handling with a dedicated agent-service for all AI reasoning</p>
+
+<svg viewBox="0 0 1280 930" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="blueArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7" fill="#58a6ff" />
+    </marker>
+    <marker id="redArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7" fill="#f47067" />
+    </marker>
+    <marker id="greenArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7" fill="#3fb950" />
+    </marker>
+    <marker id="goldArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7" fill="#d29922" />
+    </marker>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- User Layer -->
+  <rect x="20" y="20" width="1240" height="86" rx="14" fill="#1c2128" stroke="#30363d"/>
+  <text x="640" y="44" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">USER + OPERATOR CHANNELS</text>
+
+  <rect x="50" y="58" width="180" height="30" rx="8" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="140" y="77" text-anchor="middle" fill="#d29922" font-size="11">Mobile App / Web Chat</text>
+
+  <rect x="250" y="58" width="160" height="30" rx="8" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="330" y="77" text-anchor="middle" fill="#d29922" font-size="11">WhatsApp</text>
+
+  <rect x="430" y="58" width="150" height="30" rx="8" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="505" y="77" text-anchor="middle" fill="#d29922" font-size="11">SMS</text>
+
+  <rect x="600" y="58" width="150" height="30" rx="8" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="675" y="77" text-anchor="middle" fill="#d29922" font-size="11">Voice Notes</text>
+
+  <rect x="770" y="58" width="180" height="30" rx="8" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="860" y="77" text-anchor="middle" fill="#d29922" font-size="11">Chatbot UI</text>
+
+  <rect x="970" y="58" width="240" height="30" rx="8" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="1090" y="77" text-anchor="middle" fill="#d29922" font-size="11">Admin Dashboard / Caseworkers</text>
+
+  <!-- Ingress -->
+  <rect x="455" y="134" width="370" height="58" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="640" y="157" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">INGRESS / API GATEWAY</text>
+  <text x="640" y="177" text-anchor="middle" fill="#8b949e" font-size="10">NGINX Ingress | host routing | TLS later</text>
+
+  <!-- App namespace -->
+  <rect x="20" y="220" width="1240" height="340" rx="16" fill="#151a21" stroke="#30363d"/>
+  <text x="640" y="245" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">APP NAMESPACE</text>
+
+  <!-- chatbot-service -->
+  <rect x="45" y="270" width="360" height="250" rx="14" fill="#0d1117" stroke="#58a6ff" stroke-width="1.8" filter="url(#glow)"/>
+  <text x="225" y="296" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">chatbot-service</text>
+  <text x="225" y="316" text-anchor="middle" fill="#8b949e" font-size="10">API + session + safety backbone</text>
+
+  <rect x="68" y="338" width="314" height="56" rx="10" fill="#1a1616" stroke="#f47067" stroke-width="1.4" stroke-dasharray="4,3"/>
+  <text x="225" y="360" text-anchor="middle" fill="#f47067" font-size="11" font-weight="700">Deterministic Safety Layer</text>
+  <text x="225" y="378" text-anchor="middle" fill="#8b949e" font-size="10">crisis keywords | urgency floor | immediate danger | escalation rules</text>
+
+  <rect x="68" y="408" width="314" height="92" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.2"/>
+  <text x="225" y="430" text-anchor="middle" fill="#c9d1d9" font-size="11" font-weight="700">Application Control</text>
+  <text x="225" y="448" text-anchor="middle" fill="#8b949e" font-size="10">session lifecycle | idempotency | request validation</text>
+  <text x="225" y="466" text-anchor="middle" fill="#8b949e" font-size="10">message persistence | response dispatch | audit trail</text>
+  <text x="225" y="484" text-anchor="middle" fill="#8b949e" font-size="10">human escalation handoff</text>
+
+  <!-- agent-service -->
+  <rect x="440" y="270" width="400" height="250" rx="14" fill="#0d1117" stroke="#bc8cff" stroke-width="1.8" filter="url(#glow)"/>
+  <text x="640" y="296" text-anchor="middle" fill="#bc8cff" font-size="13" font-weight="700">agent-service</text>
+  <text x="640" y="316" text-anchor="middle" fill="#8b949e" font-size="10">all AI reasoning lives here</text>
+
+  <rect x="462" y="338" width="168" height="52" rx="10" fill="#161b22" stroke="#bc8cff" stroke-width="1.2"/>
+  <text x="546" y="360" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="700">Intake Agent</text>
+  <text x="546" y="378" text-anchor="middle" fill="#8b949e" font-size="10">extracts needs + context</text>
+
+  <rect x="650" y="338" width="168" height="52" rx="10" fill="#161b22" stroke="#bc8cff" stroke-width="1.2"/>
+  <text x="734" y="360" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="700">Triage Agent</text>
+  <text x="734" y="378" text-anchor="middle" fill="#8b949e" font-size="10">risk + urgency reasoning</text>
+
+  <rect x="462" y="406" width="168" height="52" rx="10" fill="#161b22" stroke="#bc8cff" stroke-width="1.2"/>
+  <text x="546" y="428" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="700">Safety Plan Agent</text>
+  <text x="546" y="446" text-anchor="middle" fill="#8b949e" font-size="10">personalized next steps</text>
+
+  <rect x="650" y="406" width="168" height="52" rx="10" fill="#161b22" stroke="#bc8cff" stroke-width="1.2"/>
+  <text x="734" y="428" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="700">Translation Agent</text>
+  <text x="734" y="446" text-anchor="middle" fill="#8b949e" font-size="10">multilingual pre/post-processing</text>
+
+  <rect x="462" y="474" width="356" height="26" rx="8" fill="#1c2128" stroke="#30363d"/>
+  <text x="640" y="491" text-anchor="middle" fill="#8b949e" font-size="10">prompt registry | model adapters | tool routing | fallback logic</text>
+
+  <!-- side services -->
+  <rect x="875" y="270" width="355" height="250" rx="14" fill="#0d1117" stroke="#3fb950" stroke-width="1.8" filter="url(#glow)"/>
+  <text x="1052" y="296" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">supporting platform services</text>
+  <text x="1052" y="316" text-anchor="middle" fill="#8b949e" font-size="10">shared services used by chatbot-service and agent-service</text>
+
+  <rect x="897" y="338" width="145" height="54" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="969" y="360" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">graph-core</text>
+  <text x="969" y="378" text-anchor="middle" fill="#8b949e" font-size="10">graph + semantic search</text>
+
+  <rect x="1062" y="338" width="145" height="54" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="1134" y="360" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">resource-svc</text>
+  <text x="1134" y="378" text-anchor="middle" fill="#8b949e" font-size="10">shelters | clinics | NGOs</text>
+
+  <rect x="897" y="410" width="145" height="54" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="969" y="432" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">geo-svc</text>
+  <text x="969" y="450" text-anchor="middle" fill="#8b949e" font-size="10">geocoding | routing | ETA</text>
+
+  <rect x="1062" y="410" width="145" height="54" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="1134" y="432" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">comms-svc</text>
+  <text x="1134" y="450" text-anchor="middle" fill="#8b949e" font-size="10">SMS | WhatsApp | voice</text>
+
+  <rect x="897" y="482" width="310" height="26" rx="8" fill="#1c2128" stroke="#30363d"/>
+  <text x="1052" y="499" text-anchor="middle" fill="#8b949e" font-size="10">follow-up worker / scheduler can sit here later</text>
+
+  <!-- Data namespace -->
+  <rect x="20" y="590" width="1240" height="150" rx="16" fill="#1a1a16" stroke="#30363d"/>
+  <text x="640" y="615" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">DATA NAMESPACE</text>
+
+  <rect x="120" y="645" width="300" height="74" rx="12" fill="#0d1117" stroke="#d29922" stroke-width="1.6"/>
+  <text x="270" y="670" text-anchor="middle" fill="#d29922" font-size="12" font-weight="700">PostgreSQL + pgvector</text>
+  <text x="270" y="690" text-anchor="middle" fill="#8b949e" font-size="10">sessions | cases | graph data | embeddings</text>
+  <text x="270" y="706" text-anchor="middle" fill="#8b949e" font-size="10">audit records | retrieval docs</text>
+
+  <rect x="490" y="645" width="300" height="74" rx="12" fill="#0d1117" stroke="#d29922" stroke-width="1.6"/>
+  <text x="640" y="670" text-anchor="middle" fill="#d29922" font-size="12" font-weight="700">MinIO / Object Storage</text>
+  <text x="640" y="690" text-anchor="middle" fill="#8b949e" font-size="10">voice notes | images | attachments</text>
+  <text x="640" y="706" text-anchor="middle" fill="#8b949e" font-size="10">evidence | documents | future media</text>
+
+  <rect x="860" y="645" width="300" height="74" rx="12" fill="#0d1117" stroke="#d29922" stroke-width="1.6"/>
+  <text x="1010" y="670" text-anchor="middle" fill="#d29922" font-size="12" font-weight="700">Model Provider Layer</text>
+  <text x="1010" y="690" text-anchor="middle" fill="#8b949e" font-size="10">OpenAI / hosted API / Ollama later</text>
+  <text x="1010" y="706" text-anchor="middle" fill="#8b949e" font-size="10">used by agent-service only</text>
+
+  <!-- Observability -->
+  <rect x="20" y="770" width="1240" height="90" rx="16" fill="#161b22" stroke="#30363d"/>
+  <text x="640" y="796" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">OBSERVABILITY NAMESPACE</text>
+  <rect x="170" y="815" width="170" height="28" rx="8" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="255" y="833" text-anchor="middle" fill="#58a6ff" font-size="11">Prometheus</text>
+  <rect x="370" y="815" width="170" height="28" rx="8" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="455" y="833" text-anchor="middle" fill="#58a6ff" font-size="11">Loki</text>
+  <rect x="570" y="815" width="170" height="28" rx="8" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="655" y="833" text-anchor="middle" fill="#58a6ff" font-size="11">Tempo</text>
+  <rect x="770" y="815" width="170" height="28" rx="8" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="855" y="833" text-anchor="middle" fill="#58a6ff" font-size="11">Grafana</text>
+  <rect x="970" y="815" width="170" height="28" rx="8" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="1055" y="833" text-anchor="middle" fill="#58a6ff" font-size="11">Alertmanager</text>
+
+  <!-- Main arrows -->
+  <line x1="640" y1="106" x2="640" y2="134" stroke="#58a6ff" stroke-width="2" marker-end="url(#blueArrow)"/>
+  <line x1="640" y1="192" x2="640" y2="270" stroke="#58a6ff" stroke-width="2" marker-end="url(#blueArrow)"/>
+
+  <line x1="405" y1="395" x2="440" y2="395" stroke="#bc8cff" stroke-width="2" marker-end="url(#greenArrow)"/>
+  <text x="423" y="387" text-anchor="middle" fill="#8b949e" font-size="9">safe, structured call</text>
+
+  <line x1="840" y1="395" x2="875" y2="395" stroke="#3fb950" stroke-width="2" marker-end="url(#greenArrow)"/>
+  <text x="858" y="387" text-anchor="middle" fill="#8b949e" font-size="9">tool/service access</text>
+
+  <line x1="225" y1="520" x2="225" y2="590" stroke="#d29922" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#goldArrow)"/>
+  <line x1="640" y1="520" x2="640" y2="590" stroke="#d29922" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#goldArrow)"/>
+  <line x1="1052" y1="520" x2="1052" y2="590" stroke="#d29922" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#goldArrow)"/>
+
+  <line x1="1010" y1="645" x2="1010" y2="520" stroke="#bc8cff" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#greenArrow)"/>
+  <text x="1028" y="580" fill="#8b949e" font-size="9">LLM access</text>
+
+  <!-- Human escalation lane -->
+  <path d="M 340 465 C 340 545, 1120 545, 1120 90" fill="none" stroke="#f47067" stroke-width="1.6" stroke-dasharray="6,4" marker-end="url(#redArrow)"/>
+  <text x="890" y="540" fill="#f47067" font-size="10">urgent / critical escalation to operators</text>
+
+  <!-- Flow footer -->
+  <rect x="20" y="875" width="1240" height="35" rx="10" fill="#0d1117" stroke="#30363d"/>
+  <text x="640" y="897" text-anchor="middle" fill="#8b949e" font-size="11">Flow: channel → ingress → chatbot-service safety checks → agent-service reasoning → support services/data → response or human escalation</text>
+</svg>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#d29922"></div>Channels, data, and persistent state</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#58a6ff"></div>Ingress and application control</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#f47067"></div>Deterministic safety and escalation</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#bc8cff"></div>Agent-service and AI reasoning</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#3fb950"></div>Supporting platform services</div>
+</div>
+
+<p class="section-title">Component Notes</p>
+<div class="details">
+  <div class="card">
+    <h3><span class="dot" style="background:#58a6ff"></span>chatbot-service</h3>
+    <ul>
+      <li>Owns API endpoints, session state, message persistence, and idempotency.</li>
+      <li>Runs deterministic safety before any agent output is trusted.</li>
+      <li>Controls handoff to operators and final response delivery to the user channel.</li>
+      <li>Good fit as the stable application gateway on both Kind and hosted Kubernetes.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot" style="background:#bc8cff"></span>agent-service</h3>
+    <ul>
+      <li>Groups all agents into one deployable AI service instead of one pod per agent.</li>
+      <li>Owns prompts, model adapters, fallback logic, and structured reasoning outputs.</li>
+      <li>Can scale independently from <code>chatbot-service</code> as AI traffic grows.</li>
+      <li>Keeps the architecture clean without over-fragmenting the cluster.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot" style="background:#3fb950"></span>Supporting Services</h3>
+    <ul>
+      <li><code>graph-core</code> remains the domain intelligence and retrieval engine.</li>
+      <li><code>resource-svc</code> handles shelters, clinics, NGOs, and other structured resource lookup.</li>
+      <li><code>geo-svc</code> handles geocoding, reverse geocoding, routing, and ETA.</li>
+      <li><code>comms-svc</code> handles outbound channels and can later absorb transcription adapters.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot" style="background:#d29922"></span>Data Layer</h3>
+    <ul>
+      <li><code>PostgreSQL + pgvector</code> stores sessions, graph records, cases, embeddings, and audit data.</li>
+      <li><code>MinIO</code> stores media and attachments for current and future multimodal workflows.</li>
+      <li>Model access is shown separately so the AI dependency stays isolated to the agent layer.</li>
+      <li>This layout works well on Kind first and maps cleanly to a hosted cluster later.</li>
+    </ul>
+  </div>
+</div>
+
+<p class="note">Single-file HTML/SVG diagram designed to be easy to open locally, tweak in an editor, and evolve alongside your Kubernetes manifests.</p>
+</body>
+</html>

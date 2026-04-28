@@ -8,20 +8,22 @@ CHATBOT_IMG   := chatbot-service:latest
 GRAPH_IMG     := graph-core:latest
 CHATUI_IMG    := chatbot-ui:latest
 ADMIN_IMG     := survivor-net/admin-ui:latest
+AGENT_IMG     := agent-service:latest
 
 CHATBOT_DIR   := ./chatbot-service
 GRAPH_DIR     := ./graph-core/backend
 CHATUI_DIR    := ./chatbot-ui-service
 ADMIN_DIR     := ./admin-ui
+AGENT_DIR     := ./agent-service
 
 CHATBOT_K8S   := $(CHATBOT_DIR)/k8s
 GRAPH_K8S     := $(GRAPH_DIR)/deploy
 CHATUI_K8S    := $(CHATUI_DIR)/k8s
 ADMIN_K8S     := $(ADMIN_DIR)/k8s
 
-.PHONY: all chatbot graph chatbot-ui admin deploy status logs restart clean help
+.PHONY: all chatbot graph chatbot-ui admin agent deploy status logs restart clean help
 
-all: chatbot graph chatbot-ui admin
+all: chatbot graph chatbot-ui admin agent
 	@echo "\n✅ All services built and deployed."
 
 help:
@@ -73,6 +75,15 @@ admin:
 	$(KUBECTL) rollout restart deploy/admin-ui
 	$(KUBECTL) rollout status deploy/admin-ui --timeout=$(TIMEOUT)
 	@echo "✅ admin-ui deployed."
+
+agent:
+	@echo "\n🔨 Building agent-service..."
+	docker build -t $(AGENT_IMG) $(AGENT_DIR)
+	kind load docker-image $(AGENT_IMG) --name $(CLUSTER)
+	$(KUBECTL) apply -f $(AGENT_DIR)/k8s/
+	$(KUBECTL) rollout restart deploy/agent-service
+	$(KUBECTL) rollout status deploy/agent-service --timeout=$(TIMEOUT)
+	@echo "✅ agent-service deployed."
 
 deploy:
 	@echo "\n📦 Applying all manifests..."

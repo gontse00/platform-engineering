@@ -9,6 +9,7 @@ from typing import Any
 import requests
 
 from app.config.settings import settings
+from app.logging_config import request_id_var
 
 
 class GraphCoreUnavailableError(Exception):
@@ -19,11 +20,15 @@ class GraphCoreClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.graph_core_base_url).rstrip("/")
 
+    def _headers(self) -> dict[str, str]:
+        return {"X-Request-ID": request_id_var.get("-")}
+
     def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         try:
             response = requests.post(
                 f"{self.base_url}{path}",
                 json=payload,
+                headers=self._headers(),
                 timeout=30,
             )
             response.raise_for_status()
@@ -36,6 +41,7 @@ class GraphCoreClient:
             response = requests.patch(
                 f"{self.base_url}{path}",
                 json=payload,
+                headers=self._headers(),
                 timeout=30,
             )
             response.raise_for_status()

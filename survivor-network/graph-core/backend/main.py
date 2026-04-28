@@ -1,4 +1,3 @@
-import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config.settings import settings
@@ -8,15 +7,13 @@ from api.routes.intake import router as intake_router
 from api.routes.triage import router as triage_router
 from api.routes.cases import router as cases_router
 from api.routes.admin import router as admin_router
+from logging_config import RequestIdMiddleware, setup_logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s"
-)
+setup_logging(service_name=settings.app_name)
 
 app = FastAPI(title=settings.app_name)
 
-# CORS — allow admin dashboard and local dev origins
+app.add_middleware(RequestIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

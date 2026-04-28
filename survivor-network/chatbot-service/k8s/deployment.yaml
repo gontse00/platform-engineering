@@ -38,6 +38,11 @@ spec:
                 configMapKeyRef:
                   name: chatbot-service-config
                   key: GRAPH_CORE_BASE_URL
+            - name: AGENT_SERVICE_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chatbot-service-config
+                  key: AGENT_SERVICE_BASE_URL
             - name: ATTACHMENT_STORAGE_PATH
               valueFrom:
                 configMapKeyRef:
