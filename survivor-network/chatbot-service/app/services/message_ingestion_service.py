@@ -239,12 +239,12 @@ class MessageIngestionService:
                     "location_text": (session.state_json or {}).get("location"),
                     "latitude": ctx.latitude,
                     "longitude": ctx.longitude,
-                    "urgency": triage.get("urgency", "urgent"),
-                    "safety_risk": triage.get("safety_risk", "medium"),
+                    "urgency": triage.get("urgency", safety_flags.get("urgency_floor", "urgent")),
+                    "safety_risk": triage.get("safety_risk", "high" if safety_flags.get("immediate_danger") else "medium"),
                     "primary_need": (session.state_json or {}).get("primary_need"),
                     "secondary_needs": [],
                     "injury_status": (session.state_json or {}).get("injury_status"),
-                    "immediate_danger": (session.state_json or {}).get("immediate_danger", False),
+                    "immediate_danger": safety_flags.get("immediate_danger", False) or (session.state_json or {}).get("immediate_danger", False),
                     "incident_type": None,
                 }
                 case_result = incident_client.create_case_from_intake(intake_payload)

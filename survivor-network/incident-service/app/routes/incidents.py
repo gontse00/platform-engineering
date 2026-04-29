@@ -64,9 +64,32 @@ def create_case_from_intake(payload: CaseFromIntake, db: Session = Depends(get_d
         if safety_risk in ("low", "medium"):
             safety_risk = "critical"
 
+    # Additional safety boost: infer from message keywords even without immediate_danger flag
+    _CRITICAL_PHRASES = ["stabbed", "bleeding", "unconscious", "overdose", "being attacked", "kill myself", "building collapse", "not breathing"]
+    _HIGH_PHRASES = ["raped", "sexual assault", "knife", "gun", "kidnap", "trapped", "beaten"]
+    for phrase in _CRITICAL_PHRASES:
+        if phrase in message_lower:
+            if urgency in ("low", "medium", "standard", "urgent"):
+                urgency = "critical"
+            if safety_risk in ("low", "medium"):
+                safety_risk = "critical"
+            break
+    if urgency not in ("critical",):
+        for phrase in _HIGH_PHRASES:
+            if phrase in message_lower:
+                if urgency in ("low", "medium", "standard"):
+                    urgency = "high" if urgency != "urgent" else "urgent"
+                if safety_risk in ("low",):
+                    safety_risk = "high"
+                break
+
     # Infer needs from message if empty
     if not needs:
         needs = _infer_needs(message_lower)
+
+    # Safety net: high/critical cases must have at least one need
+    if urgency in ("critical", "high", "urgent") and not needs:
+        needs = ["Emergency Support"]
 
     case = Case(
         source="chatbot",
@@ -163,6 +186,9 @@ _INCIDENT_TYPE_KEYWORDS: dict[str, str] = {
     "child": "Child Endangerment",
     "threat": "Threats", "threatened": "Threats",
     "stalking": "Stalking", "following me": "Stalking",
+    "overdose": "Overdose", "took too many pills": "Overdose", "poisoned": "Overdose",
+    "building collapse": "Building Collapse", "collapsed": "Building Collapse",
+    "fire": "Fire", "burning": "Fire",
 }
 
 _NEED_KEYWORDS: dict[str, str] = {
@@ -199,7 +225,12 @@ def _infer_needs(message_lower: str) -> list[str]:
 
 @router.delete("/dev/reset-cases")
 def reset_cases(db: Session = Depends(get_db)):
-    """Delete all cases, timeline entries, and assignments. DEV ONLY."""
+    """Delete all cases, timeline entries, and assignments. DEV/LOCAL ONLY."""
+    import os
+    env = os.environ.get("ENVIRONMENT", os.environ.get("APP_ENV", "dev"))
+    if env not in ("dev", "local", "test"):
+        raise HTTPException(status_code=403, detail="Reset only available in dev/local/test environments")
+
     db.query(CaseAssignment).delete()
     db.query(CaseTimelineEntry).delete()
     db.query(Case).delete()

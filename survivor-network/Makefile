@@ -161,6 +161,30 @@ local-reset:
 	@echo "\n🗑️  Resetting test data..."
 	@curl -sf -X DELETE http://incident-service.127.0.0.1.nip.io/dev/reset-cases && echo " ✅ Cases reset" || echo " ❌ Reset failed"
 
+e2e-local:
+	@echo "\n🔬 Running local E2E verification..."
+	@echo "  Resetting..."
+	@curl -sf -X DELETE http://incident-service.127.0.0.1.nip.io/dev/reset-cases > /dev/null
+	@echo "  Running 10-user simulation..."
+	@python3 tests/load/disaster_sim.py --users 10 --ramp-up 5 > /dev/null 2>&1
+	@echo "  Checking case quality..."
+	@curl -sf "http://incident-service.127.0.0.1.nip.io/cases?limit=50" | python3 -c "\
+	import sys, json; \
+	d = json.load(sys.stdin); \
+	cases = d['cases']; \
+	total = len(cases); \
+	with_type = sum(1 for c in cases if c.get('incident_type')); \
+	with_needs = sum(1 for c in cases if c.get('needs')); \
+	critical = sum(1 for c in cases if c.get('urgency') in ('critical', 'high')); \
+	triaging = sum(1 for c in cases if c.get('status') == 'triaging'); \
+	print(f'  Cases: {total}'); \
+	print(f'  With incident_type: {with_type}/{total}'); \
+	print(f'  With needs: {with_needs}/{total}'); \
+	print(f'  Critical/high urgency: {critical}/{total}'); \
+	print(f'  Auto-triaging: {triaging}/{total}'); \
+	assert total > 0, 'No cases created'; \
+	print('  ✅ E2E verification passed')"
+
 # ============================================================
 # Logs
 # ============================================================
