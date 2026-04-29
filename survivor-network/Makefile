@@ -73,11 +73,6 @@ local-down:
 
 local-build:
 	@echo "\n🔨 Building all service images..."
-	@for svc in $(SERVICES); do \
-		dir=$${DIR_$$svc:-./$$svc}; \
-		echo "  Building $$svc..."; \
-		docker build -t $$svc:latest $(DIR_$$(echo $$svc)) 2>/dev/null || true; \
-	done
 	docker build -t chatbot-service:latest $(DIR_chatbot-service)
 	docker build -t graph-core:latest $(DIR_graph-core)
 	docker build -t chatbot-ui:latest $(DIR_chatbot-ui)
