@@ -8,6 +8,27 @@ from app.utils.http import safe_get_json, safe_patch_json, safe_post_json
 router = APIRouter(prefix="/admin/cases", tags=["cases"])
 
 
+@router.get("")
+async def list_cases(
+    status: str | None = None,
+    urgency: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    admin: dict = Depends(get_current_admin),
+):
+    """List all cases from incident-service."""
+    params: dict = {"limit": str(limit), "offset": str(offset)}
+    if status:
+        params["status"] = status
+    if urgency:
+        params["urgency"] = urgency
+
+    data, err = await safe_get_json(f"{settings.incident_service_url}/cases", params)
+    if data is None:
+        raise HTTPException(status_code=503, detail=f"incident-service unavailable: {err}")
+    return data
+
+
 @router.get("/{case_id}", response_model=CaseDetailResponse)
 async def get_case_detail(case_id: str, admin: dict = Depends(get_current_admin)):
     warnings: list[str] = []

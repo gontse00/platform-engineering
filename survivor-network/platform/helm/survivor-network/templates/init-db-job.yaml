@@ -85,6 +85,32 @@ spec:
               -- incident-service tables (also needed on fresh DB)
               ALTER TABLE cases ADD COLUMN IF NOT EXISTS source_session_id VARCHAR(100);
               CREATE UNIQUE INDEX IF NOT EXISTS ix_cases_source_session_id ON cases(source_session_id) WHERE source_session_id IS NOT NULL;
+
+              -- participant-service table
+              CREATE TABLE IF NOT EXISTS participants (
+                  id UUID PRIMARY KEY,
+                  display_name VARCHAR(200) NOT NULL,
+                  phone VARCHAR(50),
+                  email VARCHAR(200),
+                  roles JSONB DEFAULT '[]',
+                  skills JSONB DEFAULT '[]',
+                  availability_status VARCHAR(30) DEFAULT 'offline',
+                  verification_status VARCHAR(50) DEFAULT 'unverified',
+                  trust_level VARCHAR(20) DEFAULT 'low',
+                  home_location_text VARCHAR(255),
+                  latitude FLOAT,
+                  longitude FLOAT,
+                  service_radius_km FLOAT,
+                  can_transport_people BOOLEAN DEFAULT FALSE,
+                  can_offer_shelter BOOLEAN DEFAULT FALSE,
+                  can_offer_counselling BOOLEAN DEFAULT FALSE,
+                  can_offer_legal_help BOOLEAN DEFAULT FALSE,
+                  can_handle_medical BOOLEAN DEFAULT FALSE,
+                  can_handle_crime_report BOOLEAN DEFAULT FALSE,
+                  last_seen_at TIMESTAMPTZ,
+                  created_at TIMESTAMPTZ DEFAULT NOW(),
+                  updated_at TIMESTAMPTZ DEFAULT NOW()
+              );
               EOF
               echo "Done."
 {{- end }}

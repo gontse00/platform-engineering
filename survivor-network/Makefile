@@ -365,3 +365,35 @@ clean-start-local: local-build local-load-kind deploy-local-helm
 	@echo "Running E2E verification..."
 	@$(MAKE) e2e-local
 	@echo "\n✅ Clean start complete."
+
+# ============================================================
+# Admin Workflow E2E
+# ============================================================
+
+e2e-admin:
+	@echo "\n🔬 Running admin workflow E2E..."
+	@echo "  1. Creating test case via incident-service..."
+	@CASE_ID=$$(curl -sf -X POST http://incident-service.127.0.0.1.nip.io/cases/from-intake \
+		-H 'Content-Type: application/json' \
+		-d '{"session_id":"admin-e2e-test-'$$RANDOM'","message":"I was mugged in Randburg and need transport home","location_text":"Randburg","urgency":"medium","safety_risk":"medium"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])") && \
+	echo "  Case created: $$CASE_ID" && \
+	echo "  2. Listing cases via admin-service..." && \
+	curl -sf "http://admin-service.127.0.0.1.nip.io/admin/cases?limit=5" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['total']>0; print(f'  Cases listed: {d[\"total\"]} total')" && \
+	echo "  3. Fetching case detail via admin-service..." && \
+	curl -sf "http://admin-service.127.0.0.1.nip.io/admin/cases/$$CASE_ID" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['case'] is not None; print(f'  Case detail: urgency={d[\"case\"][\"urgency\"]}, status={d[\"case\"][\"status\"]}')" && \
+	echo "  4. Updating case status via admin-service..." && \
+	curl -sf -X PATCH "http://admin-service.127.0.0.1.nip.io/admin/cases/$$CASE_ID/status" \
+		-H 'Content-Type: application/json' \
+		-d '{"status":"in_progress","note":"Admin reviewing case"}' | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['new_status']=='in_progress'; print('  Status updated to in_progress')" && \
+	echo "  5. Creating participant for assignment..." && \
+	PART_ID=$$(curl -sf -X POST http://participant-service.127.0.0.1.nip.io/participants \
+		-H 'Content-Type: application/json' \
+		-d '{"display_name":"E2E Helper","roles":["volunteer"],"availability_status":"available","verification_status":"admin_verified","trust_level":"high","can_transport_people":true}' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])") && \
+	echo "  Participant created: $$PART_ID" && \
+	echo "  6. Assigning participant via admin-service..." && \
+	curl -sf -X POST "http://admin-service.127.0.0.1.nip.io/admin/cases/$$CASE_ID/assign" \
+		-H 'Content-Type: application/json' \
+		-d "{\"participant_id\":\"$$PART_ID\",\"assignment_type\":\"driver\",\"notify_participant\":false}" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['assigned']==True; print(f'  Assigned: {d[\"participant_id\"]}')" && \
+	echo "  7. Checking dashboard summary..." && \
+	curl -sf "http://admin-service.127.0.0.1.nip.io/dashboard/summary" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'  Dashboard: {d[\"active_cases\"]} active, {d[\"available_participants\"]} available helpers')" && \
+	echo "  ✅ Admin workflow E2E passed"
