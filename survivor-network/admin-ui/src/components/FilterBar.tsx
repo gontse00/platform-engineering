@@ -12,9 +12,12 @@ type Props = {
 const STATUS_OPTIONS: { value: CaseStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "new", label: "New" },
+  { value: "triaging", label: "Triaging" },
+  { value: "assigned", label: "Assigned" },
   { value: "in_progress", label: "In Progress" },
   { value: "escalated", label: "Escalated" },
   { value: "resolved", label: "Resolved" },
+  { value: "closed", label: "Closed" },
 ];
 
 export default function FilterBar({

@@ -248,7 +248,7 @@ export async function assignCase(
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({
         participant_id: caseworkerId,
-        assignment_type: "helper",
+        assignment_type: "driver",
         notify_participant: false,
       }),
     });
