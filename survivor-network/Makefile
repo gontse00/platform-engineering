@@ -60,6 +60,8 @@ help:
 	@echo "  make local-reset        — clear test cases"
 	@echo "  make clear-local-cases  — alias for local-reset"
 	@echo "  make e2e-local          — run E2E quality checks"
+	@echo "  make e2e-admin          — run admin workflow E2E"
+	@echo "  make e2e-admin-local    — alias for e2e-admin"
 	@echo "  make init-chatbot-db    — create chatbot DB tables manually"
 	@echo "  make clean-start-local  — full rebuild + init + test"
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.incident import IncidentReport, Case, CaseTimelineEntry, CaseAssignment
-from app.safety_rules import normalize_case_safety, URGENCY_ORDER, SAFETY_ORDER, _SAFETY_RULES
+from app.safety_rules import normalize_case_safety, _SAFETY_RULES
 from app.schemas.incident import (
     IncidentReportCreate, IncidentReportResponse,
     CaseCreate, CaseFromIntake, CaseResponse,
@@ -162,82 +162,9 @@ def _add_timeline(db, case_id, event_type, description, actor=None, metadata=Non
 
 
 # ---------------------------------------------------------------------------
-# Deterministic safety normalization (no LLM required)
 # ---------------------------------------------------------------------------
-# Urgency: standard, medium, urgent, critical
-# Safety risk: low, medium, high, immediate
-
-# Pattern rules: (phrases, urgency, safety_risk, incident_type, needs)
-_SAFETY_RULES: list[dict] = [
-    # --- CRITICAL / IMMEDIATE ---
-    # DV active attack (must be above generic attack rules for specificity)
-    {"phrases": ["husband is beating", "partner is hitting", "husband is hitting", "wife is hitting",
-                 "boyfriend is beating", "partner is beating", "beating me right now", "locked myself in"],
-     "urgency": "critical", "safety_risk": "immediate", "incident_type": "Domestic Violence",
-     "needs": ["Emergency Shelter", "Protection Order Support"]},
-    {"phrases": ["stabbed", "stabbing", "bleeding heavily", "bleeding badly"],
-     "urgency": "critical", "safety_risk": "immediate", "incident_type": "Assault",
-     "needs": ["Emergency Medical"]},
-    {"phrases": ["unconscious", "not breathing", "no pulse"],
-     "urgency": "critical", "safety_risk": "immediate", "incident_type": "Medical Emergency",
-     "needs": ["Emergency Medical"]},
-    {"phrases": ["building collapse", "trapped under", "people are trapped", "flood", "fire and"],
-     "urgency": "critical", "safety_risk": "immediate", "incident_type": "Disaster / Emergency",
-     "needs": ["Emergency Medical"]},
-    {"phrases": ["overdose", "took too many pills", "swallowed pills", "poisoned"],
-     "urgency": "critical", "safety_risk": "immediate", "incident_type": "Mental Health Crisis",
-     "needs": ["Emergency Medical", "Mental Health Support"]},
-    {"phrases": ["kill myself", "want to die", "end my life", "suicidal", "self-harm"],
-     "urgency": "critical", "safety_risk": "immediate", "incident_type": "Mental Health Crisis",
-     "needs": ["Emergency Medical", "Mental Health Support"]},
-    {"phrases": ["being attacked", "attacking me", "hitting me right now"],
-     "urgency": "critical", "safety_risk": "immediate", "incident_type": "Assault",
-     "needs": ["Emergency Medical", "Emergency Shelter"]},
-    # --- URGENT / HIGH ---
-    {"phrases": ["raped", "i was raped", "sexual assault", "sexually assaulted"],
-     "urgency": "urgent", "safety_risk": "high", "incident_type": "Sexual Assault",
-     "needs": ["Emergency Medical", "Mental Health Support"]},
-    {"phrases": ["domestic violence", "partner hit me", "husband hit me", "abusive partner",
-                 "wife hit me", "boyfriend hit me"],
-     "urgency": "urgent", "safety_risk": "high", "incident_type": "Domestic Violence",
-     "needs": ["Emergency Shelter", "Protection Order Support"]},
-    {"phrases": ["knife", "gun", "weapon", "armed"],
-     "urgency": "urgent", "safety_risk": "high", "incident_type": "Assault",
-     "needs": ["Emergency Shelter"]},
-    {"phrases": ["kidnap", "abducted", "locked in", "trapped", "won't let me leave"],
-     "urgency": "urgent", "safety_risk": "high", "incident_type": "Child Endangerment",
-     "needs": ["Emergency Shelter"]},
-    {"phrases": ["hijack", "carjack"],
-     "urgency": "urgent", "safety_risk": "high", "incident_type": "Hijacking",
-     "needs": ["Emergency Medical", "Transport Support"]},
-    # --- URGENT / MEDIUM ---
-    {"phrases": ["arv", "hiv medication", "antiretroviral", "ran out of medication", "need my medication", "medication stolen"],
-     "urgency": "urgent", "safety_risk": "medium", "incident_type": "Medication Access",
-     "needs": ["Medication Access"]},
-    {"phrases": ["need shelter", "nowhere to stay", "kicked me out", "homeless"],
-     "urgency": "urgent", "safety_risk": "medium", "incident_type": "Domestic Violence",
-     "needs": ["Emergency Shelter"]},
-    # --- MEDIUM ---
-    {"phrases": ["mugged", "robbed", "robbery", "stolen my"],
-     "urgency": "medium", "safety_risk": "medium", "incident_type": "Robbery",
-     "needs": ["Transport Support"]},
-    {"phrases": ["counselling", "counseling", "trauma", "panic attack", "can't cope", "can't sleep"],
-     "urgency": "medium", "safety_risk": "low", "incident_type": "Mental Health Crisis",
-     "needs": ["Mental Health Support"]},
-    {"phrases": ["protection order", "restraining order", "legal help"],
-     "urgency": "medium", "safety_risk": "medium", "incident_type": "Protection Order",
-     "needs": ["Protection Order Support"]},
-    {"phrases": ["break-in", "broke into", "burglary"],
-     "urgency": "medium", "safety_risk": "medium", "incident_type": "Break-in",
-     "needs": ["Protection Order Support"]},
-    {"phrases": ["stranded", "no transport", "need a ride", "can't get home"],
-     "urgency": "medium", "safety_risk": "low", "incident_type": "Transport Support",
-     "needs": ["Transport Support"]},
-]
-
-URGENCY_ORDER = ["standard", "medium", "urgent", "critical"]
-SAFETY_ORDER = ["low", "medium", "high", "immediate"]
-
+# Legacy helpers using imported safety rules
+# ---------------------------------------------------------------------------
 
 def _infer_incident_type(message_lower: str) -> str | None:
     """Legacy helper — kept for non-intake routes."""
