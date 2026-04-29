@@ -50,7 +50,7 @@ def create_case_from_intake(payload: CaseFromIntake, db: Session = Depends(get_d
         message_lower=message_lower,
         incoming_urgency=payload.urgency,
         incoming_safety_risk=payload.safety_risk,
-        incoming_needs=[payload.primary_need] if payload.primary_need else [] + payload.secondary_needs,
+        incoming_needs=([payload.primary_need] if payload.primary_need else []) + payload.secondary_needs,
         incoming_incident_type=payload.incident_type,
         immediate_danger=payload.immediate_danger,
     )
