@@ -130,3 +130,121 @@ services:
     ingress:
       enabled: true
       host: participant-service.127.0.0.1.nip.io
+
+  graphCore:
+    enabled: true
+    name: graph-core
+    image:
+      repository: graph-core
+      tag: latest
+    replicas: 1
+    port: 8080
+    env:
+      DATABASE_URL: "postgresql+psycopg2://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
+      LLM_ENABLED: "false"
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1000m"
+        memory: "3Gi"
+    probes:
+      readiness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      liveness:
+        path: /health
+        initialDelaySeconds: 15
+        periodSeconds: 30
+    ingress:
+      enabled: true
+      host: graph-core.127.0.0.1.nip.io
+
+  agentService:
+    enabled: true
+    name: agent-service
+    image:
+      repository: agent-service
+      tag: latest
+    replicas: 1
+    port: 8080
+    env:
+      LLM_ENABLED: "false"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+    probes:
+      readiness:
+        path: /health
+        initialDelaySeconds: 3
+        periodSeconds: 10
+      liveness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 30
+    ingress:
+      enabled: false
+
+  chatbotUi:
+    enabled: true
+    name: chatbot-ui
+    image:
+      repository: chatbot-ui
+      tag: latest
+    replicas: 1
+    port: 8080
+    env: {}
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+    probes:
+      readiness:
+        path: /
+        initialDelaySeconds: 3
+        periodSeconds: 10
+      liveness:
+        path: /
+        initialDelaySeconds: 5
+        periodSeconds: 30
+    ingress:
+      enabled: true
+      host: chatbot-ui.127.0.0.1.nip.io
+
+  adminUi:
+    enabled: true
+    name: admin-ui
+    image:
+      repository: admin-ui
+      tag: latest
+    replicas: 1
+    port: 8080
+    env: {}
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+    probes:
+      readiness:
+        path: /health
+        initialDelaySeconds: 3
+        periodSeconds: 10
+      liveness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 30
+    ingress:
+      enabled: true
+      host: admin-ui.127.0.0.1.nip.io

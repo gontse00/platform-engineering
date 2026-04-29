@@ -1,0 +1,60 @@
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svc.name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app: {{ $svc.name }}
+    {{- include "survivor-network.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ $svc.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $svc.name }}
+    spec:
+      serviceAccountName: survivor-network
+      containers:
+        - name: {{ $svc.name }}
+          image: {{ if $.Values.global.imageRegistry }}{{ $.Values.global.imageRegistry }}/{{ end }}{{ $svc.image.repository }}:{{ $svc.image.tag }}
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ $svc.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: {{ $svc.name }}-config
+          {{- if $svc.probes }}
+          {{- if $svc.probes.readiness }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.probes.readiness.path }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: {{ $svc.probes.readiness.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ $svc.probes.readiness.periodSeconds | default 10 }}
+            timeoutSeconds: 5
+            failureThreshold: 6
+          {{- end }}
+          {{- if $svc.probes.liveness }}
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.probes.liveness.path }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: {{ $svc.probes.liveness.initialDelaySeconds | default 15 }}
+            periodSeconds: {{ $svc.probes.liveness.periodSeconds | default 30 }}
+            timeoutSeconds: 10
+            failureThreshold: 5
+          {{- end }}
+          {{- end }}
+          {{- if $svc.resources }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          {{- end }}
+{{- end }}
+{{- end }}
