@@ -48,6 +48,24 @@ make local-load-kind
 make deploy-local-helm
 ```
 
+### Clean local rebuild
+
+After deleting and recreating the cluster, or on a fresh setup:
+
+```bash
+make local-up
+make clean-start-local
+```
+
+This runs the full sequence: build → load → deploy → init DB → restart chatbot → smoke test → E2E.
+
+Manual fallback if the Helm init hook didn't create tables:
+
+```bash
+make init-chatbot-db
+make restart-service SVC=chatbot-service
+```
+
 Or use the legacy per-service targets:
 
 ```bash
