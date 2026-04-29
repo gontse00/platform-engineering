@@ -116,3 +116,56 @@ clean:
 	@echo "\n🧹 Removing local images..."
 	-docker rmi $(CHATBOT_IMG) $(GRAPH_IMG) $(CHATUI_IMG) $(ADMIN_IMG) 2>/dev/null
 	@echo "✅ Clean."
+
+
+# ============================================================
+# Infrastructure & Deployment Targets
+# ============================================================
+
+local-up:
+	@echo "\n🚀 Starting local Kind cluster..."
+	cd survivor-infra && terraform init && terraform apply -auto-approve
+
+local-down:
+	@echo "\n🛑 Destroying local Kind cluster..."
+	kind delete cluster --name $(CLUSTER)
+
+local-build: all
+
+local-test:
+	@echo "\n🧪 Running tests..."
+	cd chatbot-service && python3 -m pytest tests/ -v
+	cd agent-service && python3 -m pytest tests/ -v
+	cd admin-service && python3 -m pytest tests/ -v
+
+local-sim:
+	python3 tests/load/disaster_sim.py --users 10 --ramp-up 5
+
+local-sim-full:
+	python3 tests/load/full_flow_sim.py --survivors 20 --helpers 10 --ramp-up 5
+
+cloud-dev-plan:
+	@echo "\n📋 Planning cloud dev infrastructure..."
+	cd infra/cloud/dev && terraform init && terraform plan
+
+cloud-dev-apply:
+	@echo "\n🏗️ Applying cloud dev infrastructure..."
+	cd infra/cloud/dev && terraform init && terraform apply
+
+deploy-dev:
+	@echo "\n🚀 Deploying to cloud dev with Helm..."
+	helm upgrade --install survivor-network \
+		platform/helm/survivor-network \
+		-f platform/helm/survivor-network/values-dev.yaml \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--wait --timeout 5m
+
+deploy-local-helm:
+	@echo "\n🚀 Deploying locally with Helm..."
+	helm upgrade --install survivor-network \
+		platform/helm/survivor-network \
+		-f platform/helm/survivor-network/values-local.yaml \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--wait --timeout 5m

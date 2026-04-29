@@ -1,0 +1,43 @@
+name: Deploy Dev
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "survivor-network/platform/helm/**"
+
+env:
+  CLUSTER_NAME: survivor-dev
+  REGION: africa-south1
+  NAMESPACE: survivor-apps
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: Authenticate to GCP and get cluster credentials
+      # - uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+      # - uses: google-github-actions/get-gke-credentials@v2
+      #   with:
+      #     cluster_name: ${{ env.CLUSTER_NAME }}
+      #     location: ${{ env.REGION }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install survivor-network \
+            survivor-network/platform/helm/survivor-network \
+            -f survivor-network/platform/helm/survivor-network/values-dev.yaml \
+            --namespace ${{ env.NAMESPACE }} \
+            --create-namespace \
+            --set global.imageRegistry="${{ env.REGISTRY }}" \
+            --wait --timeout 5m
+        env:
+          REGISTRY: "africa-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/survivor-images"

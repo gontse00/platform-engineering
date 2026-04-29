@@ -1,0 +1,18 @@
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $svc.name }}-config
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app: {{ $svc.name }}
+    {{- include "survivor-network.labels" $ | nindent 4 }}
+data:
+  SERVICE_NAME: {{ $svc.name | quote }}
+  {{- range $envKey, $envVal := $svc.env }}
+  {{ $envKey }}: {{ $envVal | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [rescue-net, main]
+  pull_request:
+    branches: [rescue-net, main]
+
+jobs:
+  test-chatbot-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: survivor-network/chatbot-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v
+
+  test-agent-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: survivor-network/agent-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v
+
+  test-admin-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: survivor-network/admin-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff
+      - run: ruff check survivor-network/ --select E,F --ignore E501

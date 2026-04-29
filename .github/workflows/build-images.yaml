@@ -1,0 +1,50 @@
+name: Build Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "survivor-network/chatbot-service/**"
+      - "survivor-network/admin-service/**"
+      - "survivor-network/incident-service/**"
+      - "survivor-network/participant-service/**"
+      - "survivor-network/agent-service/**"
+      - "survivor-network/graph-core/**"
+
+env:
+  # TODO: Set these in GitHub repository secrets/variables
+  REGISTRY: "africa-south1-docker.pkg.dev/PROJECT_ID/survivor-images"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - chatbot-service
+          - admin-service
+          - incident-service
+          - participant-service
+          - agent-service
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: Authenticate to container registry
+      # - uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+      # - uses: google-github-actions/setup-gcloud@v2
+      # - run: gcloud auth configure-docker africa-south1-docker.pkg.dev
+
+      - name: Build image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ matrix.service }}:latest \
+            survivor-network/${{ matrix.service }}
+
+      # TODO: Push to registry once auth is configured
+      # - name: Push image
+      #   run: |
+      #     docker push ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+      #     docker push ${{ env.REGISTRY }}/${{ matrix.service }}:latest

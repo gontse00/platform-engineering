@@ -1,2 +1,36 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# Environment / Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+.pytest_cache/
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+
+# OS
+.DS_Store
+
+# Simulation results
 disaster_sim_results_*.json
 full_flow_results_*.json
+
+# IDE
+.idea/
+.vscode/
+*.iml

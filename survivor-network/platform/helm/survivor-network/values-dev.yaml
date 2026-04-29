@@ -1,0 +1,36 @@
+# Cloud dev environment overrides
+global:
+  imageRegistry: "africa-south1-docker.pkg.dev/PROJECT_ID/survivor-images"
+  imagePullPolicy: Always
+
+services:
+  chatbotService:
+    replicas: 2
+    image:
+      tag: "${IMAGE_TAG}"
+    env:
+      LLM_ENABLED: "true"
+    ingress:
+      host: chatbot.survivor-dev.example.com
+
+  adminService:
+    image:
+      tag: "${IMAGE_TAG}"
+    ingress:
+      host: admin.survivor-dev.example.com
+
+  incidentService:
+    image:
+      tag: "${IMAGE_TAG}"
+    env:
+      DATABASE_URL: "${DATABASE_URL}"
+    ingress:
+      host: incidents.survivor-dev.example.com
+
+  participantService:
+    image:
+      tag: "${IMAGE_TAG}"
+    env:
+      DATABASE_URL: "${DATABASE_URL}"
+    ingress:
+      host: participants.survivor-dev.example.com

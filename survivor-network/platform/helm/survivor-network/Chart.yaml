@@ -1,0 +1,6 @@
+apiVersion: v2
+name: survivor-network
+description: Survivor Network platform - AI-assisted community safety and emergency support
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

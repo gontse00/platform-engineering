@@ -1,0 +1,5 @@
+project_id   = "your-gcp-project-id"
+region       = "africa-south1"
+cluster_name = "survivor-dev"
+node_count   = 2
+machine_type = "e2-standard-2"

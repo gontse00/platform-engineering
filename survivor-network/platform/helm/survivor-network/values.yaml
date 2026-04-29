@@ -1,0 +1,132 @@
+# Default values for survivor-network
+global:
+  namespace: survivor-apps
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+
+services:
+  chatbotService:
+    enabled: true
+    name: chatbot-service
+    image:
+      repository: chatbot-service
+      tag: latest
+    replicas: 2
+    port: 8080
+    env:
+      GRAPH_CORE_BASE_URL: "http://graph-core:8080"
+      AGENT_SERVICE_BASE_URL: "http://agent-service:8080"
+      INCIDENT_SERVICE_BASE_URL: "http://incident-service:8080"
+      LLM_ENABLED: "false"
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "1000m"
+        memory: "768Mi"
+    probes:
+      readiness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      liveness:
+        path: /health
+        initialDelaySeconds: 15
+        periodSeconds: 30
+    ingress:
+      enabled: true
+      host: chatbot-service.127.0.0.1.nip.io
+
+  adminService:
+    enabled: true
+    name: admin-service
+    image:
+      repository: admin-service
+      tag: latest
+    replicas: 1
+    port: 8080
+    env:
+      GRAPH_CORE_URL: "http://graph-core:8080"
+      INCIDENT_SERVICE_URL: "http://incident-service:8080"
+      PARTICIPANT_SERVICE_URL: "http://participant-service:8080"
+      AUTH_MODE: "dev"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+    probes:
+      readiness:
+        path: /health
+        initialDelaySeconds: 3
+        periodSeconds: 10
+      liveness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 30
+    ingress:
+      enabled: true
+      host: admin-service.127.0.0.1.nip.io
+
+  incidentService:
+    enabled: true
+    name: incident-service
+    image:
+      repository: incident-service
+      tag: latest
+    replicas: 1
+    port: 8080
+    env:
+      DATABASE_URL: "postgresql+psycopg2://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+    probes:
+      readiness:
+        path: /health
+        initialDelaySeconds: 3
+        periodSeconds: 10
+      liveness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 30
+    ingress:
+      enabled: true
+      host: incident-service.127.0.0.1.nip.io
+
+  participantService:
+    enabled: true
+    name: participant-service
+    image:
+      repository: participant-service
+      tag: latest
+    replicas: 1
+    port: 8080
+    env:
+      DATABASE_URL: "postgresql+psycopg2://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+    probes:
+      readiness:
+        path: /health
+        initialDelaySeconds: 3
+        periodSeconds: 10
+      liveness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 30
+    ingress:
+      enabled: true
+      host: participant-service.127.0.0.1.nip.io
