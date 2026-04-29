@@ -394,6 +394,16 @@ e2e-admin:
 	curl -sf -X POST "http://admin-service.127.0.0.1.nip.io/admin/cases/$$CASE_ID/assign" \
 		-H 'Content-Type: application/json' \
 		-d "{\"participant_id\":\"$$PART_ID\",\"assignment_type\":\"driver\",\"notify_participant\":false}" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['assigned']==True; print(f'  Assigned: {d[\"participant_id\"]}')" && \
-	echo "  7. Checking dashboard summary..." && \
+	echo "  7. Reading case timeline..." && \
+	curl -sf "http://admin-service.127.0.0.1.nip.io/admin/cases/$$CASE_ID/timeline" | python3 -c "\
+	import sys,json; d=json.load(sys.stdin); \
+	tl=d.get('timeline',[]); \
+	assert len(tl)>0, 'Timeline is empty'; \
+	events=[e['event_type'] for e in tl]; \
+	assert any(e in ('status_change','assignment','created') for e in events), f'No expected events in {events}'; \
+	print(f'  Timeline: {len(tl)} entries, events={events}')" && \
+	echo "  8. Checking dashboard summary..." && \
 	curl -sf "http://admin-service.127.0.0.1.nip.io/dashboard/summary" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'  Dashboard: {d[\"active_cases\"]} active, {d[\"available_participants\"]} available helpers')" && \
 	echo "  ✅ Admin workflow E2E passed"
+
+e2e-admin-local: e2e-admin

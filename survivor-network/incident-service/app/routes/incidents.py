@@ -115,6 +115,33 @@ def add_timeline_entry(case_id: str, payload: TimelineEntryCreate, db: Session =
     db.refresh(entry)
     return {"id": str(entry.id), "case_id": case_id, "event_type": entry.event_type, "description": entry.description, "actor": entry.actor, "created_at": entry.created_at}
 
+@router.get("/cases/{case_id}/timeline")
+def get_case_timeline(case_id: str, db: Session = Depends(get_db)):
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    entries = (
+        db.query(CaseTimelineEntry)
+        .filter(CaseTimelineEntry.case_id == case_id)
+        .order_by(CaseTimelineEntry.created_at.asc())
+        .all()
+    )
+    return {
+        "case_id": case_id,
+        "timeline": [
+            {
+                "id": str(e.id),
+                "case_id": e.case_id,
+                "event_type": e.event_type,
+                "description": e.description,
+                "actor": e.actor,
+                "metadata": e.metadata_json,
+                "created_at": e.created_at,
+            }
+            for e in entries
+        ],
+    }
+
 @router.post("/cases/{case_id}/assignments")
 def assign_case(case_id: str, payload: AssignmentCreate, db: Session = Depends(get_db)):
     case = db.query(Case).filter(Case.id == case_id).first()

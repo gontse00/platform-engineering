@@ -114,6 +114,24 @@ Tests:
 - Sexual assault case → urgency=urgent, safety_risk=high, incident_type=Sexual Assault
 - Stabbing case → urgency=critical, safety_risk=immediate, needs includes Emergency Medical
 - Idempotency → duplicate session returns existing case
+- Aggregate simulation quality
+
+### Admin workflow verification
+
+```bash
+make e2e-admin
+make e2e-admin-local   # alias
+```
+
+Validates the full admin operator workflow:
+- Case creation in incident-service
+- Case listing via admin-service
+- Case detail with graph-core enrichment
+- Status update (with timeline recording)
+- Participant creation and assignment (with safety checks)
+- Timeline read (ordered events)
+- Dashboard summary aggregation
+- Idempotency → duplicate session returns existing case
 - Aggregate simulation → cases have incident_type and needs populated
 
 ### Load simulations

@@ -91,6 +91,15 @@ async def update_case_status(
     return result
 
 
+@router.get("/{case_id}/timeline")
+async def get_case_timeline(case_id: str, admin: dict = Depends(get_current_admin)):
+    """Fetch case timeline from incident-service."""
+    data, err = await safe_get_json(f"{settings.incident_service_url}/cases/{case_id}/timeline")
+    if err:
+        raise HTTPException(status_code=503, detail=f"incident-service unavailable: {err}")
+    return data
+
+
 @router.post("/{case_id}/escalate")
 async def escalate_case(
     case_id: str,

@@ -60,8 +60,8 @@ async def assign_participant(
     safety_risk = case_data.get("safety_risk", "low")
     urgency = case_data.get("urgency", "medium")
 
-    # High/critical safety risk requires verified helper
-    if safety_risk in ("high", "critical") and verification not in VERIFIED_STATUSES:
+    # High/immediate safety risk requires verified helper
+    if safety_risk in ("high", "immediate") and verification not in VERIFIED_STATUSES:
         raise HTTPException(
             status_code=400,
             detail=f"Case safety_risk={safety_risk} requires admin_verified or higher. "
