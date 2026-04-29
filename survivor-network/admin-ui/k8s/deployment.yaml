@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: admin-ui
-          image: survivor-net/admin-ui:latest
+          image: admin-ui:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

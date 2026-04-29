@@ -28,6 +28,62 @@ function authHeaders(): Record<string, string> {
 }
 
 // ---------------------------------------------------------------------------
+// Mapper: admin-service/incident-service case → UI CaseRecord shape
+// ---------------------------------------------------------------------------
+
+function mapAdminCaseToCaseRecord(c: Record<string, unknown>): CaseRecord {
+  const summary = (c.summary as string) || "";
+  const urgencyMap: Record<string, string> = {
+    critical: "critical",
+    urgent: "urgent",
+    medium: "normal",
+    standard: "normal",
+    low: "low",
+  };
+  const rawUrgency = (c.urgency as string) || "standard";
+  const mappedUrgency = urgencyMap[rawUrgency] || "normal";
+
+  const lat = c.latitude as number | null;
+  const lon = c.longitude as number | null;
+  const location = lat != null && lon != null
+    ? {
+        latitude: lat,
+        longitude: lon,
+        location_source: "incident-service",
+        accuracy_meters: null,
+        is_approximate: true,
+        consent_to_share: true,
+        captured_at: (c.created_at as string) || null,
+      }
+    : null;
+
+  return {
+    case_id: (c.id as string) || (c.case_id as string) || "",
+    label: `Case - ${((c.id as string) || "").slice(0, 8)}`,
+    note_count: 0,
+    incident_summary: summary,
+    incident_summary_short: summary.length > 120 ? summary.slice(0, 120) + "..." : summary,
+    urgency: mappedUrgency as CaseRecord["urgency"],
+    raw_urgency: rawUrgency,
+    status: ((c.status as string) || "new") as CaseRecord["status"],
+    raw_status: (c.status as string) || "new",
+    safety_risk: (c.safety_risk as string) || "low",
+    queue: null,
+    created_at: (c.created_at as string) || "",
+    updated_at: (c.updated_at as string) || (c.created_at as string) || "",
+    location,
+    normalized_location: (c.location_text as string) || null,
+    primary_needs: (c.needs as string[]) || [],
+    incident_types: c.incident_type ? [c.incident_type as string] : [],
+    requires_human_review: rawUrgency === "critical",
+    escalation_recommended: rawUrgency === "critical" || rawUrgency === "urgent",
+    assigned_to: (c.assigned_participant_id as string) || null,
+    assigned_to_name: null,
+    survivor: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Cases — via admin-service (primary) with graph-core fallback
 // ---------------------------------------------------------------------------
 
@@ -48,9 +104,14 @@ export async function fetchCases(
     const resp = await fetch(`${ADMIN_SERVICE_URL}/admin/cases?${params}`, {
       headers: authHeaders(),
     });
-    if (resp.ok) return resp.json();
-  } catch {
-    // fall through to graph-core
+    if (resp.ok) {
+      const data = await resp.json();
+      const cases = (data.cases || []).map(mapAdminCaseToCaseRecord);
+      return { cases, total: data.total || cases.length, limit, offset };
+    }
+    console.warn("[admin-ui] admin-service /admin/cases failed, falling back to graph-core");
+  } catch (err) {
+    console.warn("[admin-ui] admin-service unreachable, falling back to graph-core:", err);
   }
 
   // Fallback to graph-core (legacy)
@@ -71,15 +132,15 @@ export async function fetchStats(): Promise<StatsResponse> {
     if (resp.ok) {
       const data = await resp.json();
       return {
-        total_cases: data.active_cases + (data.urgent_cases || 0),
+        total_cases: data.active_cases || 0,
         by_status: {},
         by_urgency: {},
         with_location: 0,
-        ...data,
       };
     }
-  } catch {
-    // fall through
+    console.warn("[admin-ui] admin-service /dashboard/summary failed, falling back to graph-core");
+  } catch (err) {
+    console.warn("[admin-ui] admin-service unreachable for stats:", err);
   }
 
   // Fallback to graph-core
@@ -106,7 +167,38 @@ export async function updateCaseStatus(
 }
 
 // ---------------------------------------------------------------------------
-// Resources — still via graph-core (admin-service doesn't have this yet)
+// Case Detail & Timeline — via admin-service
+// ---------------------------------------------------------------------------
+
+export async function fetchCaseDetail(caseId: string): Promise<Record<string, unknown>> {
+  const resp = await fetch(`${ADMIN_SERVICE_URL}/admin/cases/${caseId}`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`Failed to fetch case detail: ${resp.status}`);
+  return resp.json();
+}
+
+export type TimelineEntry = {
+  id: string;
+  case_id: string;
+  event_type: string;
+  description: string;
+  actor: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export async function fetchCaseTimeline(caseId: string): Promise<TimelineEntry[]> {
+  const resp = await fetch(`${ADMIN_SERVICE_URL}/admin/cases/${caseId}/timeline`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`Failed to fetch timeline: ${resp.status}`);
+  const data = await resp.json();
+  return data.timeline || [];
+}
+
+// ---------------------------------------------------------------------------
+// Resources — via graph-core (TODO: migrate to admin-service when available)
 // ---------------------------------------------------------------------------
 
 export async function fetchNearbyResources(
@@ -114,6 +206,7 @@ export async function fetchNearbyResources(
   lon: number,
   radiusKm = 15,
 ): Promise<NearbyResourcesResponse> {
+  // TODO: Move to admin-service when resource proxy is implemented
   const params = new URLSearchParams({
     lat: String(lat),
     lon: String(lon),
@@ -127,11 +220,11 @@ export async function fetchNearbyResources(
 }
 
 // ---------------------------------------------------------------------------
-// Caseworkers / Participants — via graph-core (legacy) or admin-service
+// Caseworkers — via graph-core (TODO: migrate to participant-service via admin-service)
 // ---------------------------------------------------------------------------
 
 export async function fetchCaseWorkers(): Promise<CaseWorker[]> {
-  // Try graph-core first (has seed caseworkers)
+  // TODO: Replace with admin-service /admin/participants when ready
   const resp = await fetch(`${GRAPH_CORE_URL}/admin/caseworkers`, {
     headers: authHeaders(),
   });
@@ -145,14 +238,14 @@ export async function assignCase(
   caseId: string,
   caseworkerId: string,
 ): Promise<{ case_id: string; assigned_to: string | null; assigned_to_name: string | null; assigned_at: string | null }> {
-  // Try admin-service assignment (with safety checks)
+  // Use admin-service assignment (with safety checks)
   try {
     const resp = await fetch(`${ADMIN_SERVICE_URL}/admin/cases/${caseId}/assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({
         participant_id: caseworkerId,
-        assignment_type: "helper",
+        assignment_type: "responder",
         notify_participant: false,
       }),
     });
@@ -165,8 +258,9 @@ export async function assignCase(
         assigned_at: null,
       };
     }
-  } catch {
-    // fall through to graph-core
+    console.warn("[admin-ui] admin-service assign failed, falling back to graph-core");
+  } catch (err) {
+    console.warn("[admin-ui] admin-service unreachable for assign:", err);
   }
 
   // Fallback to graph-core
@@ -181,10 +275,11 @@ export async function assignCase(
 }
 
 // ---------------------------------------------------------------------------
-// Case Notes — via graph-core (admin-service doesn't proxy notes yet)
+// Notes — via graph-core (TODO: add notes proxy to admin-service)
 // ---------------------------------------------------------------------------
 
 export async function fetchCaseNotes(caseId: string): Promise<CaseNote[]> {
+  // TODO: Migrate to admin-service when notes proxy is implemented
   const resp = await fetch(`${GRAPH_CORE_URL}/admin/cases/${caseId}/notes`, {
     headers: authHeaders(),
   });
@@ -199,6 +294,7 @@ export async function addCaseNote(
   text: string,
   author: string,
 ): Promise<CaseNote> {
+  // TODO: Migrate to admin-service when notes proxy is implemented
   const resp = await fetch(`${GRAPH_CORE_URL}/admin/cases/${caseId}/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -210,13 +306,14 @@ export async function addCaseNote(
 }
 
 // ---------------------------------------------------------------------------
-// SSE — via graph-core (admin-service doesn't have SSE yet)
+// SSE — via graph-core (TODO: add SSE to admin-service)
 // ---------------------------------------------------------------------------
 
 export function subscribeToCaseStream(
   onUpdate: (cases: CaseRecord[], total: number) => void,
   onError?: (err: Event) => void,
 ): () => void {
+  // TODO: Migrate to admin-service SSE when implemented
   const url = `${GRAPH_CORE_URL}/admin/cases/stream`;
   const source = new EventSource(url);
 

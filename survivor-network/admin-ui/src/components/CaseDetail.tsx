@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchCaseNotes, addCaseNote } from "../api";
+import { fetchCaseNotes, addCaseNote, fetchCaseTimeline } from "../api";
+import type { TimelineEntry } from "../api";
 import type { CaseNote, CaseRecord, CaseStatus, CaseWorker } from "../types";
 
 type Props = {
@@ -64,6 +65,8 @@ export default function CaseDetail({
   const [noteText, setNoteText] = useState("");
   const [noteAuthor, setNoteAuthor] = useState("Admin");
   const [noteSubmitting, setNoteSubmitting] = useState(false);
+  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  const [timelineWarning, setTimelineWarning] = useState("");
 
   useEffect(() => {
     if (!caseRecord) {
@@ -85,6 +88,21 @@ export default function CaseDetail({
     return () => {
       cancelled = true;
     };
+  }, [caseRecord?.case_id]);
+
+  // Fetch timeline from admin-service
+  useEffect(() => {
+    if (!caseRecord) {
+      setTimeline([]);
+      setTimelineWarning("");
+      return;
+    }
+    fetchCaseTimeline(caseRecord.case_id)
+      .then(setTimeline)
+      .catch(() => {
+        setTimeline([]);
+        setTimelineWarning("Timeline unavailable");
+      });
   }, [caseRecord?.case_id]);
 
   const handleAddNote = async () => {
@@ -245,6 +263,25 @@ export default function CaseDetail({
         <label>Case ID</label>
         <p className="detail-meta case-id-text">{c.case_id}</p>
       </div>
+
+      {/* Timeline */}
+      {timeline.length > 0 && (
+        <div className="detail-section">
+          <label>Timeline ({timeline.length})</label>
+          <div className="notes-list">
+            {timeline.map((entry) => (
+              <div key={entry.id} className="note-item">
+                <div className="note-item-header">
+                  <span className="note-author">{entry.event_type}</span>
+                  <span className="note-time">{entry.actor || "system"}</span>
+                </div>
+                <p className="note-text">{entry.description}</p>
+              </div>
+            ))}
+          </div>
+          {timelineWarning && <p className="detail-meta">{timelineWarning}</p>}
+        </div>
+      )}
 
       <div className="detail-section notes-section">
         <label>
