@@ -157,6 +157,10 @@ local-sim-full:
 local-sim-100:
 	python3 tests/load/disaster_sim.py --users 100 --ramp-up 60
 
+local-reset:
+	@echo "\n🗑️  Resetting test data..."
+	@curl -sf -X DELETE http://incident-service.127.0.0.1.nip.io/dev/reset-cases && echo " ✅ Cases reset" || echo " ❌ Reset failed"
+
 # ============================================================
 # Logs
 # ============================================================

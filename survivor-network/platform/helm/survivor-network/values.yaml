@@ -14,6 +14,7 @@ services:
     replicas: 2
     port: 8080
     env:
+      DATABASE_URL: "postgresql+psycopg2://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
       GRAPH_CORE_BASE_URL: "http://graph-core:8080"
       AGENT_SERVICE_BASE_URL: "http://agent-service:8080"
       INCIDENT_SERVICE_BASE_URL: "http://incident-service:8080"

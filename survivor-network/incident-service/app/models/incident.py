@@ -29,6 +29,7 @@ class IncidentReport(Base):
 class Case(Base):
     __tablename__ = "cases"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_session_id: Mapped[str | None] = mapped_column(String(100), nullable=True, unique=True, index=True)
     incident_report_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     source: Mapped[str] = mapped_column(String(50), default="api")
     summary: Mapped[str] = mapped_column(Text, default="")

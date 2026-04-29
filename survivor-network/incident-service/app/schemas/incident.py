@@ -60,6 +60,7 @@ class CaseFromIntake(BaseModel):
 
 class CaseResponse(BaseModel):
     id: str
+    source_session_id: str | None = None
     incident_report_id: str | None
     source: str
     summary: str
