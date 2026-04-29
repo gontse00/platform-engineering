@@ -5,6 +5,7 @@ not graph-core.
 """
 
 import pytest
+import requests
 from unittest.mock import patch, MagicMock
 
 from app.clients.incident_service_client import IncidentServiceClient, IncidentServiceUnavailableError
@@ -35,7 +36,7 @@ class TestIncidentServiceClient:
     def test_create_case_from_intake_unavailable(self):
         client = IncidentServiceClient(base_url="http://fake:8080")
 
-        with patch("app.clients.incident_service_client.requests.post", side_effect=Exception("connection refused")):
+        with patch("app.clients.incident_service_client.requests.post", side_effect=requests.RequestException("connection refused")):
             with pytest.raises(IncidentServiceUnavailableError):
                 client.create_case_from_intake({"message": "test"})
 
