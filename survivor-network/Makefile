@@ -55,7 +55,10 @@ help:
 	@echo "=== Operations ==="
 	@echo "  make logs SVC=x         — tail logs"
 	@echo "  make restart            — rolling restart all"
-	@echo "  make clean              — remove local images"
+	@echo "  make restart-service SVC=x — restart one service"
+	@echo "  make local-reset        — clear test cases"
+	@echo "  make clear-local-cases  — alias for local-reset"
+	@echo "  make e2e-local          — run E2E quality checks"
 
 # ============================================================
 # Local Workflow (Helm-based)
@@ -149,6 +152,7 @@ local-test:
 	cd chatbot-service && python3 -m pytest tests/ -v
 	cd agent-service && python3 -m pytest tests/ -v
 	cd admin-service && python3 -m pytest tests/ -v
+	cd incident-service && python3 -m pytest tests/ -v
 
 local-sim:
 	python3 tests/load/disaster_sim.py --users 10 --ramp-up 5
@@ -237,6 +241,16 @@ restart:
 	@echo "\n🔄 Rolling restart all services..."
 	$(KUBECTL) rollout restart deploy/chatbot-service deploy/graph-core deploy/chatbot-ui deploy/admin-ui deploy/agent-service deploy/incident-service deploy/participant-service deploy/admin-service
 	@echo "✅ Restart initiated."
+
+restart-service:
+ifndef SVC
+	@echo "Usage: make restart-service SVC=incident-service"
+	@exit 1
+endif
+	@echo "\n🔄 Restarting $(SVC)..."
+	$(KUBECTL) rollout restart deploy/$(SVC)
+	$(KUBECTL) rollout status deploy/$(SVC) --timeout=$(TIMEOUT)
+	@echo "✅ $(SVC) restarted."
 
 clean:
 	@echo "\n🧹 Removing local images..."
