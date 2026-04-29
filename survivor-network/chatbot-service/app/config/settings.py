@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/chatbot_service"
     graph_core_base_url: str = "http://graph-core:8080"
     agent_service_base_url: str = "http://agent-service:8080"
+    incident_service_base_url: str = "http://incident-service:8080"
 
     attachment_storage_path: str = "/tmp/chatbot-attachments"
 

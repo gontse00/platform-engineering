@@ -8,5 +8,6 @@ data:
   ENVIRONMENT: "dev"
   GRAPH_CORE_BASE_URL: "http://graph-core:8080"
   AGENT_SERVICE_BASE_URL: "http://agent-service:8080"
+  INCIDENT_SERVICE_BASE_URL: "http://incident-service:8080"
   ATTACHMENT_STORAGE_PATH: "/tmp/chatbot-attachments"
   LLM_ENABLED: "false"

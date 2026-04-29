@@ -20,6 +20,7 @@ from app.clients.agent_service_client import (
     AGENT_FALLBACK_RESPONSE,
 )
 from app.clients.graph_core_client import GraphCoreClient, GraphCoreUnavailableError
+from app.clients.incident_service_client import IncidentServiceClient, IncidentServiceUnavailableError
 from app.clients.llm_client import LLMClient
 from app.domain.constants import PrimaryNeed
 from app.models.session import ChatMessageDB, ChatSessionDB
@@ -52,6 +53,11 @@ class MessageIngestionService:
 
     @staticmethod
     def _safe_case_update(session: ChatSessionDB) -> None:
+        """Best-effort graph-core context enrichment for the case.
+        
+        Note: The case ID now belongs to incident-service. Graph-core may not
+        recognize it. This call is optional and failure is silently ignored.
+        """
         if not session.provisional_case_id:
             return
 
@@ -70,6 +76,7 @@ class MessageIngestionService:
             graph = GraphCoreClient()
             graph.update_case_context(session.provisional_case_id, payload)
         except GraphCoreUnavailableError:
+            # Expected: graph-core may not know this case ID (it's from incident-service)
             pass
 
     @staticmethod
@@ -223,24 +230,44 @@ class MessageIngestionService:
         escalation = (assessment or {}).get("escalation", {})
 
         if triage.get("urgency") in {"critical", "urgent"} and not session.provisional_case_id:
+            # Create provisional case through incident-service (source of truth)
             try:
-                case_result = graph.create_case(
-                    message=ctx.message,
-                    top_k=5,
-                    create_referrals=True,
-                    pre_parsed=ctx.pre_parsed,
-                    crisis_override=ctx.crisis_override,
-                    latitude=ctx.latitude,
-                    longitude=ctx.longitude,
-                )
-                session.provisional_case_id = case_result["persisted"]["case"]["id"]
-                session.latest_urgency = case_result["triage"]["urgency"]
-                session.latest_queue = case_result["escalation"]["queue"]
-                session.escalated = bool(case_result["escalation"]["escalate"])
+                incident_client = IncidentServiceClient()
+                intake_payload = {
+                    "session_id": str(session.id),
+                    "message": ctx.message[:500],
+                    "location_text": (session.state_json or {}).get("location"),
+                    "latitude": ctx.latitude,
+                    "longitude": ctx.longitude,
+                    "urgency": triage.get("urgency", "urgent"),
+                    "safety_risk": triage.get("safety_risk", "medium"),
+                    "primary_need": (session.state_json or {}).get("primary_need"),
+                    "secondary_needs": [],
+                    "injury_status": (session.state_json or {}).get("injury_status"),
+                    "immediate_danger": (session.state_json or {}).get("immediate_danger", False),
+                    "incident_type": None,
+                }
+                case_result = incident_client.create_case_from_intake(intake_payload)
+
+                session.provisional_case_id = case_result["id"]
+                session.latest_urgency = case_result.get("urgency")
+                session.latest_queue = escalation.get("queue")
+                session.escalated = bool(escalation.get("escalate", True))
                 session.stage = "collecting_followup_after_escalation"
-                escalation = case_result["escalation"]
-            except GraphCoreUnavailableError:
-                logger.warning("Graph-core unavailable for case creation")
+
+                # Add timeline entry
+                try:
+                    incident_client.add_timeline_entry(
+                        case_id=case_result["id"],
+                        event_type="auto_escalation",
+                        description=f"Auto-escalated: urgency={triage.get('urgency')}, safety={triage.get('safety_risk')}",
+                        actor="chatbot-service",
+                    )
+                except IncidentServiceUnavailableError:
+                    pass
+
+            except IncidentServiceUnavailableError:
+                logger.warning("incident-service unavailable for provisional case creation")
 
         # Enrich existing case with new info
         if session.provisional_case_id:
