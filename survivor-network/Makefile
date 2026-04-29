@@ -137,6 +137,8 @@ health:
 	@curl -sf http://admin-ui.127.0.0.1.nip.io/health && echo " ✅ admin-ui" || echo " ❌ admin-ui"
 	@curl -sf http://chatbot-ui.127.0.0.1.nip.io/ >/dev/null && echo " ✅ chatbot-ui" || echo " ❌ chatbot-ui"
 	@echo "  ⚠️  agent-service (internal only — no ingress)"
+	@$(KUBECTL) run curl-test --image=curlimages/curl --rm -i --restart=Never --command -- \
+		curl -sf http://agent-service:8080/health 2>/dev/null && echo " ✅ agent-service (internal)" || echo " ⚠️  agent-service (could not verify internally)"
 
 # ============================================================
 # Tests & Simulations
@@ -161,13 +163,44 @@ local-reset:
 	@echo "\n🗑️  Resetting test data..."
 	@curl -sf -X DELETE http://incident-service.127.0.0.1.nip.io/dev/reset-cases && echo " ✅ Cases reset" || echo " ❌ Reset failed"
 
+clear-local-cases: local-reset
+
 e2e-local:
 	@echo "\n🔬 Running local E2E verification..."
 	@echo "  Resetting..."
 	@curl -sf -X DELETE http://incident-service.127.0.0.1.nip.io/dev/reset-cases > /dev/null
+	@echo "  Testing known high-risk case (sexual assault)..."
+	@curl -sf -X POST http://incident-service.127.0.0.1.nip.io/cases/from-intake \
+		-H 'Content-Type: application/json' \
+		-d '{"session_id":"e2e-test-sexual-assault","message":"I was raped last night in Hillbrow","location_text":"Hillbrow","urgency":"medium","safety_risk":"low","immediate_danger":false}' | \
+		python3 -c "\
+	import sys, json; c = json.load(sys.stdin); \
+	assert c['urgency'] in ('urgent','critical'), f'Expected urgent+, got {c[\"urgency\"]}'; \
+	assert c['safety_risk'] in ('high','immediate'), f'Expected high+, got {c[\"safety_risk\"]}'; \
+	assert c['incident_type'] is not None, 'incident_type is null'; \
+	assert len(c['needs']) > 0, 'needs is empty'; \
+	print(f'  ✅ Sexual assault: urgency={c[\"urgency\"]}, safety={c[\"safety_risk\"]}, type={c[\"incident_type\"]}, needs={c[\"needs\"]}')"
+	@echo "  Testing known critical case (stabbing)..."
+	@curl -sf -X POST http://incident-service.127.0.0.1.nip.io/cases/from-intake \
+		-H 'Content-Type: application/json' \
+		-d '{"session_id":"e2e-test-stabbing","message":"I was stabbed and I am bleeding heavily","urgency":"medium","safety_risk":"low","immediate_danger":true}' | \
+		python3 -c "\
+	import sys, json; c = json.load(sys.stdin); \
+	assert c['urgency'] == 'critical', f'Expected critical, got {c[\"urgency\"]}'; \
+	assert c['safety_risk'] == 'immediate', f'Expected immediate, got {c[\"safety_risk\"]}'; \
+	assert 'Emergency Medical' in c['needs'], f'Missing Emergency Medical in {c[\"needs\"]}'; \
+	print(f'  ✅ Stabbing: urgency={c[\"urgency\"]}, safety={c[\"safety_risk\"]}, needs={c[\"needs\"]}')"
+	@echo "  Testing idempotency (duplicate session)..."
+	@curl -sf -X POST http://incident-service.127.0.0.1.nip.io/cases/from-intake \
+		-H 'Content-Type: application/json' \
+		-d '{"session_id":"e2e-test-stabbing","message":"duplicate call","urgency":"standard","safety_risk":"low"}' | \
+		python3 -c "\
+	import sys, json; c = json.load(sys.stdin); \
+	assert c['urgency'] == 'critical', 'Idempotency failed — got different case'; \
+	print('  ✅ Idempotency: duplicate returned existing case')"
 	@echo "  Running 10-user simulation..."
 	@python3 tests/load/disaster_sim.py --users 10 --ramp-up 5 > /dev/null 2>&1
-	@echo "  Checking case quality..."
+	@echo "  Checking aggregate case quality..."
 	@curl -sf "http://incident-service.127.0.0.1.nip.io/cases?limit=50" | python3 -c "\
 	import sys, json; \
 	d = json.load(sys.stdin); \
@@ -175,12 +208,12 @@ e2e-local:
 	total = len(cases); \
 	with_type = sum(1 for c in cases if c.get('incident_type')); \
 	with_needs = sum(1 for c in cases if c.get('needs')); \
-	critical = sum(1 for c in cases if c.get('urgency') in ('critical', 'high')); \
+	critical = sum(1 for c in cases if c.get('urgency') in ('critical', 'urgent')); \
 	triaging = sum(1 for c in cases if c.get('status') == 'triaging'); \
 	print(f'  Cases: {total}'); \
 	print(f'  With incident_type: {with_type}/{total}'); \
 	print(f'  With needs: {with_needs}/{total}'); \
-	print(f'  Critical/high urgency: {critical}/{total}'); \
+	print(f'  Urgent/critical: {critical}/{total}'); \
 	print(f'  Auto-triaging: {triaging}/{total}'); \
 	assert total > 0, 'No cases created'; \
 	print('  ✅ E2E verification passed')"

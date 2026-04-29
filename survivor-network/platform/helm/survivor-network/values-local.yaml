@@ -12,6 +12,7 @@ services:
   incidentService:
     env:
       DATABASE_URL: "postgresql+psycopg2://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
+      ENVIRONMENT: "local"
   participantService:
     env:
       DATABASE_URL: "postgresql+psycopg2://survivor:survivor-pw@survivor-db-postgresql.data.svc.cluster.local:5432/survivor"
