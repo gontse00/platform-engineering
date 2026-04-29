@@ -4,6 +4,14 @@ global:
   imageRegistry: ""
   imagePullPolicy: IfNotPresent
 
+initDb:
+  enabled: true
+  host: "survivor-db-postgresql.data.svc.cluster.local"
+  port: "5432"
+  database: "survivor"
+  user: "survivor"
+  password: "survivor-pw"
+
 services:
   chatbotService:
     enabled: true

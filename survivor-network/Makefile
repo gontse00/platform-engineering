@@ -334,3 +334,27 @@ deploy-dev:
 		--namespace $(NAMESPACE) \
 		--create-namespace \
 		--wait --timeout 5m
+
+# ============================================================
+# Database Init (manual fallback if initContainer didn't run)
+# ============================================================
+
+init-chatbot-db:
+	@echo "Initializing chatbot-service database tables via psql..."
+	$(KUBECTL) -n data exec survivor-db-postgresql-0 -- env PGPASSWORD=survivor-pw psql -U survivor -d survivor -c "\
+		CREATE TABLE IF NOT EXISTS chat_sessions (id UUID PRIMARY KEY, status VARCHAR(50) DEFAULT 'active', stage VARCHAR(100) DEFAULT 'initial', provisional_case_id VARCHAR(100), escalated BOOLEAN DEFAULT FALSE, latest_urgency VARCHAR(50), latest_queue VARCHAR(100), state_json JSONB DEFAULT '{}', submitted_at TIMESTAMPTZ, closed_at TIMESTAMPTZ, last_user_message_at TIMESTAMPTZ, last_assessed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()); \
+		CREATE TABLE IF NOT EXISTS chat_messages (id UUID PRIMARY KEY, session_id UUID REFERENCES chat_sessions(id), role VARCHAR(20), content TEXT, client_message_id VARCHAR(100), extracted_json JSONB DEFAULT '{}', agent_reasoning_json JSONB, safety_flags_json JSONB, created_at TIMESTAMPTZ DEFAULT NOW()); \
+		CREATE TABLE IF NOT EXISTS chat_attachments (id UUID PRIMARY KEY, session_id UUID REFERENCES chat_sessions(id), attachment_type VARCHAR(50), storage_path TEXT, original_filename VARCHAR(255), metadata_json JSONB DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT NOW()); \
+		CREATE INDEX IF NOT EXISTS ix_chat_messages_session_id ON chat_messages(session_id); \
+		CREATE INDEX IF NOT EXISTS ix_chat_messages_client_message_id ON chat_messages(client_message_id); \
+		CREATE INDEX IF NOT EXISTS ix_chat_attachments_session_id ON chat_attachments(session_id); \
+		ALTER TABLE cases ADD COLUMN IF NOT EXISTS source_session_id VARCHAR(100); \
+		CREATE UNIQUE INDEX IF NOT EXISTS ix_cases_source_session_id ON cases(source_session_id) WHERE source_session_id IS NOT NULL;"
+	@echo "Done."
+
+clean-start-local: local-build local-load-kind deploy-local-helm
+	@echo "\nWaiting for pods to be ready..."
+	@sleep 10
+	@$(MAKE) smoke-local
+	@$(MAKE) e2e-local
+	@echo "\n✅ Clean start complete."
