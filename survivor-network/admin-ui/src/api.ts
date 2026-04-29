@@ -224,7 +224,10 @@ export async function fetchNearbyResources(
 // ---------------------------------------------------------------------------
 
 export async function fetchCaseWorkers(): Promise<CaseWorker[]> {
-  // TODO: Replace with admin-service /admin/participants when ready
+  // TODO: Replace with admin-service /dashboard/participants when participant-service
+  // participants are used as caseworkers. Currently graph-core has seed caseworkers
+  // that may not exist in participant-service. Assignments may fail if the caseworker
+  // ID from graph-core is not a valid participant-service participant.
   const resp = await fetch(`${GRAPH_CORE_URL}/admin/caseworkers`, {
     headers: authHeaders(),
   });
@@ -245,7 +248,7 @@ export async function assignCase(
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({
         participant_id: caseworkerId,
-        assignment_type: "responder",
+        assignment_type: "helper",
         notify_participant: false,
       }),
     });

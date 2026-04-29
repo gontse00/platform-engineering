@@ -9,7 +9,7 @@ export type CaseLocation = {
 };
 
 export type Urgency = "low" | "normal" | "urgent" | "critical";
-export type CaseStatus = "new" | "in_progress" | "escalated" | "resolved";
+export type CaseStatus = "new" | "triaging" | "assigned" | "in_progress" | "escalated" | "resolved" | "closed";
 
 export type CaseNote = {
   id: string;

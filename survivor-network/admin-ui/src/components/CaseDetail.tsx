@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchCaseNotes, addCaseNote, fetchCaseTimeline } from "../api";
+import { fetchCaseNotes, addCaseNote, fetchCaseTimeline, fetchCaseDetail } from "../api";
 import type { TimelineEntry } from "../api";
 import type { CaseNote, CaseRecord, CaseStatus, CaseWorker } from "../types";
 
@@ -12,24 +12,33 @@ type Props = {
 };
 
 const STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
-  new: ["in_progress", "escalated"],
-  in_progress: ["escalated", "resolved"],
+  new: ["triaging", "assigned", "in_progress"],
+  triaging: ["assigned", "in_progress", "resolved"],
+  assigned: ["in_progress", "resolved"],
+  in_progress: ["resolved", "closed"],
   escalated: ["in_progress", "resolved"],
-  resolved: ["in_progress"],
+  resolved: ["closed", "in_progress"],
+  closed: [],
 };
 
 const STATUS_LABELS: Record<CaseStatus, string> = {
   new: "New",
+  triaging: "Triaging",
+  assigned: "Assigned",
   in_progress: "In Progress",
   escalated: "Escalated",
   resolved: "Resolved",
+  closed: "Closed",
 };
 
 const STATUS_BUTTON_CLASS: Record<CaseStatus, string> = {
   new: "status-btn-new",
+  triaging: "status-btn-progress",
+  assigned: "status-btn-progress",
   in_progress: "status-btn-progress",
   escalated: "status-btn-escalated",
   resolved: "status-btn-resolved",
+  closed: "status-btn-resolved",
 };
 
 function formatDate(iso: string | null): string {
@@ -67,6 +76,7 @@ export default function CaseDetail({
   const [noteSubmitting, setNoteSubmitting] = useState(false);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [timelineWarning, setTimelineWarning] = useState("");
+  const [detailWarnings, setDetailWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     if (!caseRecord) {
@@ -95,6 +105,7 @@ export default function CaseDetail({
     if (!caseRecord) {
       setTimeline([]);
       setTimelineWarning("");
+      setDetailWarnings([]);
       return;
     }
     fetchCaseTimeline(caseRecord.case_id)
@@ -102,6 +113,14 @@ export default function CaseDetail({
       .catch(() => {
         setTimeline([]);
         setTimelineWarning("Timeline unavailable");
+      });
+    // Fetch detail warnings from admin-service
+    fetchCaseDetail(caseRecord.case_id)
+      .then((detail: Record<string, unknown>) => {
+        setDetailWarnings((detail.warnings as string[]) || []);
+      })
+      .catch(() => {
+        setDetailWarnings(["admin-service detail unavailable"]);
       });
   }, [caseRecord?.case_id]);
 
@@ -147,6 +166,14 @@ export default function CaseDetail({
           </span>
         )}
       </div>
+
+      {detailWarnings.length > 0 && (
+        <div className="detail-section">
+          {detailWarnings.map((w, i) => (
+            <p key={i} className="detail-meta">{w}</p>
+          ))}
+        </div>
+      )}
 
       {nextStatuses.length > 0 && (
         <div className="detail-section status-actions">
@@ -265,9 +292,10 @@ export default function CaseDetail({
       </div>
 
       {/* Timeline */}
-      {timeline.length > 0 && (
-        <div className="detail-section">
-          <label>Timeline ({timeline.length})</label>
+      <div className="detail-section">
+        <label>Timeline ({timeline.length})</label>
+        {timelineWarning && <p className="detail-meta">{timelineWarning}</p>}
+        {timeline.length > 0 && (
           <div className="notes-list">
             {timeline.map((entry) => (
               <div key={entry.id} className="note-item">
@@ -279,9 +307,8 @@ export default function CaseDetail({
               </div>
             ))}
           </div>
-          {timelineWarning && <p className="detail-meta">{timelineWarning}</p>}
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="detail-section notes-section">
         <label>
