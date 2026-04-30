@@ -1,4 +1,6 @@
 # Cloud dev environment overrides (GCP)
+# TODO: CI/CD can override image tags with --set at deploy time:
+#   helm upgrade --install ... --set services.chatbotService.image.tag=$SHA
 global:
   imageRegistry: "europe-west2-docker.pkg.dev/survivor-rescue-net-dev/survivor-network"
   imagePullPolicy: Always
@@ -7,9 +9,10 @@ services:
   chatbotService:
     replicas: 2
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     env:
-      # TODO: Replace with Cloud SQL private IP or connection name when VPC peering is configured
+      # TODO: Replace DATABASE_URL with real Cloud SQL connectivity.
+      # Options: Cloud SQL Auth Proxy sidecar, private IP, or public IP with authorized networks.
       DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
       GRAPH_CORE_BASE_URL: "http://graph-core:8080"
       AGENT_SERVICE_BASE_URL: "http://agent-service:8080"
@@ -21,7 +24,7 @@ services:
 
   adminService:
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     env:
       GRAPH_CORE_URL: "http://graph-core:8080"
       INCIDENT_SERVICE_URL: "http://incident-service:8080"
@@ -29,11 +32,11 @@ services:
       AUTH_MODE: "dev"
     ingress:
       enabled: true
-      host: admin.survivor-dev.example.com
+      host: admin-api.survivor-dev.example.com
 
   incidentService:
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     env:
       # TODO: Replace with Cloud SQL connection string from Terraform output
       DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
@@ -44,7 +47,7 @@ services:
 
   participantService:
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     env:
       # TODO: Replace with Cloud SQL connection string from Terraform output
       DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
@@ -54,7 +57,7 @@ services:
 
   graphCore:
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     env:
       # TODO: Replace with Cloud SQL connection string from Terraform output
       DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
@@ -65,7 +68,7 @@ services:
 
   agentService:
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     env:
       LLM_ENABLED: "false"
     ingress:
@@ -73,14 +76,14 @@ services:
 
   chatbotUi:
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     ingress:
       enabled: true
       host: chat.survivor-dev.example.com
 
   adminUi:
     image:
-      tag: "${IMAGE_TAG}"
+      tag: "dev"
     ingress:
       enabled: true
       host: dashboard.survivor-dev.example.com

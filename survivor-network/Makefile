@@ -26,7 +26,7 @@ DIR_admin-service       := ./admin-service
 .PHONY: help all local-up local-down local-build local-load-kind deploy-local-helm \
         status health smoke-local local-test local-sim local-sim-full local-sim-100 \
         helm-lint-local helm-template-local logs restart clean \
-        cloud-dev-plan cloud-dev-apply deploy-dev \
+        cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-destroy deploy-dev kubeconfig-dev \
         chatbot graph chatbot-ui admin-ui agent incident participant admin-svc
 
 # ============================================================
@@ -66,6 +66,9 @@ help:
 	@echo "  make clean-start-local  — full rebuild + init + test"
 	@echo ""
 	@echo "=== Cloud Dev (GCP) ==="
+	@echo "  make cloud-dev-init     — terraform init"
+	@echo "  make cloud-dev-fmt      — terraform fmt"
+	@echo "  make cloud-dev-validate — terraform validate"
 	@echo "  make cloud-dev-plan     — terraform plan"
 	@echo "  make cloud-dev-apply    — terraform apply"
 	@echo "  make cloud-dev-destroy  — terraform destroy"
@@ -333,11 +336,20 @@ admin-svc:
 # Cloud Deployment
 # ============================================================
 
+cloud-dev-init:
+	cd infra/cloud/dev && terraform init
+
+cloud-dev-fmt:
+	terraform fmt -recursive infra/
+
+cloud-dev-validate:
+	cd infra/cloud/dev && terraform validate
+
 cloud-dev-plan:
-	cd infra/cloud/dev && terraform init && terraform plan
+	cd infra/cloud/dev && terraform init && terraform plan -out=tfplan
 
 cloud-dev-apply:
-	cd infra/cloud/dev && terraform init && terraform apply
+	cd infra/cloud/dev && terraform apply tfplan
 
 cloud-dev-destroy:
 	cd infra/cloud/dev && terraform destroy
