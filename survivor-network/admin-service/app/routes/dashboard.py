@@ -15,11 +15,24 @@ async def dashboard_summary(admin: dict = Depends(get_current_admin)):
     # Fetch cases from incident-service
     active_cases = 0
     urgent_cases = 0
+    by_status: dict[str, int] = {}
+    by_urgency: dict[str, int] = {}
+    with_location = 0
+
     cases_data, err = await safe_get_json(f"{settings.incident_service_url}/cases", {"limit": "200"})
     if cases_data:
         all_cases = cases_data.get("cases", [])
-        active_cases = sum(1 for c in all_cases if c.get("status") not in ("resolved", "closed", "rejected"))
-        urgent_cases = sum(1 for c in all_cases if c.get("urgency") in ("urgent", "critical"))
+        for c in all_cases:
+            st = c.get("status", "new")
+            urg = c.get("urgency", "medium")
+            by_status[st] = by_status.get(st, 0) + 1
+            by_urgency[urg] = by_urgency.get(urg, 0) + 1
+            if st not in ("resolved", "closed", "rejected"):
+                active_cases += 1
+            if urg in ("urgent", "critical"):
+                urgent_cases += 1
+            if c.get("latitude") is not None:
+                with_location += 1
     elif err:
         warnings.append(f"incident-service unavailable: {err}")
 
@@ -41,9 +54,12 @@ async def dashboard_summary(admin: dict = Depends(get_current_admin)):
         urgent_cases=urgent_cases,
         available_participants=available_participants,
         unverified_participants=unverified_participants,
-        recent_reports=0,  # TODO: incident-service report count
+        recent_reports=0,
         system_status=status,
         warnings=warnings,
+        by_status=by_status,
+        by_urgency=by_urgency,
+        with_location=with_location,
     )
 
 

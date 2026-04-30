@@ -9,3 +9,6 @@ class DashboardSummary(BaseModel):
     recent_reports: int = 0
     system_status: str = "ok"
     warnings: list[str] = []
+    by_status: dict[str, int] = {}
+    by_urgency: dict[str, int] = {}
+    with_location: int = 0

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.location_resolver import resolve_location
 from app.models.incident import IncidentReport, Case, CaseTimelineEntry, CaseAssignment
 from app.safety_rules import normalize_case_safety, _SAFETY_RULES
 from app.schemas.incident import (
@@ -56,14 +57,23 @@ def create_case_from_intake(payload: CaseFromIntake, db: Session = Depends(get_d
         immediate_danger=payload.immediate_danger,
     )
 
+    # Resolve location if coordinates not provided
+    lat = payload.latitude
+    lon = payload.longitude
+    if lat is None or lon is None:
+        resolved_lat, resolved_lon = resolve_location(payload.location_text)
+        if resolved_lat is not None:
+            lat = resolved_lat
+            lon = resolved_lon
+
     case = Case(
         source="chatbot",
         source_session_id=payload.session_id,
         summary=payload.message[:500],
         incident_type=incident_type,
         location_text=payload.location_text,
-        latitude=payload.latitude,
-        longitude=payload.longitude,
+        latitude=lat,
+        longitude=lon,
         urgency=urgency,
         safety_risk=safety_risk,
         needs=needs,

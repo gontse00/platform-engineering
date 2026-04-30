@@ -133,9 +133,9 @@ export async function fetchStats(): Promise<StatsResponse> {
       const data = await resp.json();
       return {
         total_cases: data.active_cases || 0,
-        by_status: {},
-        by_urgency: {},
-        with_location: 0,
+        by_status: data.by_status || {},
+        by_urgency: data.by_urgency || {},
+        with_location: data.with_location || 0,
       };
     }
     console.warn("[admin-ui] admin-service /dashboard/summary failed, falling back to graph-core");
