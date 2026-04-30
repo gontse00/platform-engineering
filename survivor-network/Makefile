@@ -1,6 +1,7 @@
 # ============================================================
 # Survivor Network — Makefile
 # ============================================================
+# --- Local Kind ---
 CLUSTER     := survivor-net
 NAMESPACE   := survivor-apps
 CONTEXT     := kind-$(CLUSTER)
@@ -9,6 +10,17 @@ KUBECTL     := $(KUBECTL_CLUSTER) -n $(NAMESPACE)
 TIMEOUT     := 120s
 HELM_CHART  := platform/helm/survivor-network
 HELM_VALUES := $(HELM_CHART)/values-local.yaml
+
+# --- Cloud Dev (GCP) ---
+GCP_PROJECT        ?= survivor-rescue-net-dev
+GCP_REGION         ?= europe-west2
+GCP_ZONE           ?= europe-west2-a
+GKE_CLUSTER        ?= survivor-network-dev
+AR_REPO            ?= survivor-network
+IMAGE_TAG          ?= dev
+REGISTRY           ?= $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(AR_REPO)
+CLOUD_SQL_INSTANCE ?= survivor-network-dev-db
+DEV_NAMESPACE      ?= survivor-apps
 
 # All service images (must match Helm values)
 SERVICES := chatbot-service graph-core chatbot-ui admin-ui agent-service incident-service participant-service admin-service
@@ -26,7 +38,9 @@ DIR_admin-service       := ./admin-service
 .PHONY: help all local-up local-down local-build local-load-kind deploy-local-helm \
         status health smoke-local local-test local-sim local-sim-full local-sim-100 \
         helm-lint-local helm-template-local logs restart clean \
-        cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-destroy deploy-dev kubeconfig-dev \
+        cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-destroy \
+        deploy-dev kubeconfig-dev cloud-dev-build-push cloud-dev-authorize-sql cloud-dev-create-secrets \
+        helm-template-dev smoke-dev-internal cloud-dev-recreate \
         chatbot graph chatbot-ui admin-ui agent incident participant admin-svc
 
 # ============================================================
@@ -73,7 +87,13 @@ help:
 	@echo "  make cloud-dev-apply    — terraform apply"
 	@echo "  make cloud-dev-destroy  — terraform destroy"
 	@echo "  make kubeconfig-dev     — get GKE credentials"
+	@echo "  make cloud-dev-build-push — build + push all images"
+	@echo "  make cloud-dev-authorize-sql — authorize GKE→Cloud SQL"
+	@echo "  make cloud-dev-create-secrets — create DB secret"
+	@echo "  make helm-template-dev  — render dev Helm templates"
 	@echo "  make deploy-dev         — helm deploy to cloud dev"
+	@echo "  make smoke-dev-internal — health check pods internally"
+	@echo "  make cloud-dev-recreate — full teardown + recreate"
 
 # ============================================================
 # Local Workflow (Helm-based)
@@ -333,7 +353,7 @@ admin-svc:
 	$(KUBECTL) rollout status deploy/admin-service --timeout=$(TIMEOUT)
 
 # ============================================================
-# Cloud Deployment
+# Cloud Dev (GCP) — Full Automation
 # ============================================================
 
 cloud-dev-init:
@@ -355,15 +375,73 @@ cloud-dev-destroy:
 	cd infra/cloud/dev && terraform destroy
 
 kubeconfig-dev:
-	gcloud container clusters get-credentials survivor-network-dev --zone europe-west2-a --project survivor-rescue-net-dev
+	gcloud container clusters get-credentials $(GKE_CLUSTER) --zone $(GCP_ZONE) --project $(GCP_PROJECT)
+
+cloud-dev-build-push:
+	@echo "\n🔨 Building and pushing all images to $(REGISTRY)..."
+	@gcloud auth configure-docker $(GCP_REGION)-docker.pkg.dev --quiet
+	@for svc in chatbot-service graph-core chatbot-ui admin-ui agent-service incident-service participant-service admin-service; do \
+		echo "  Building $$svc..."; \
+		docker build -t $(REGISTRY)/$$svc:$(IMAGE_TAG) ./$$svc 2>/dev/null || \
+		docker build -t $(REGISTRY)/$$svc:$(IMAGE_TAG) $$(echo $$svc | sed 's/graph-core/.\/graph-core\/backend/;s/chatbot-ui/.\/chatbot-ui-service/;s/admin-ui/.\/admin-ui/') && \
+		docker push $(REGISTRY)/$$svc:$(IMAGE_TAG); \
+	done
+	@echo "✅ All images pushed."
+
+cloud-dev-authorize-sql:
+	@echo "Authorizing GKE nodes to access Cloud SQL..."
+	@NODE_IPS=$$(gcloud compute instances list --project $(GCP_PROJECT) --format='value(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null | tr '\n' ',') && \
+	gcloud sql instances patch $(CLOUD_SQL_INSTANCE) \
+		--project $(GCP_PROJECT) \
+		--authorized-networks=$$NODE_IPS \
+		--quiet
+	@echo "✅ Cloud SQL authorized for GKE node IPs."
+
+cloud-dev-create-secrets:
+	@echo "Creating Kubernetes secrets for cloud-dev..."
+	@echo "Enter Cloud SQL DATABASE_URL (e.g., postgresql+psycopg2://survivor:PASSWORD@IP:5432/survivor):"
+	@read -p "DATABASE_URL: " DB_URL && \
+	kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
+		--from-literal=DATABASE_URL="$$DB_URL" \
+		--dry-run=client -o yaml | kubectl apply -f -
+	@echo "✅ Secret survivor-db-url created/updated."
+
+helm-template-dev:
+	helm template survivor-network $(HELM_CHART) -f $(HELM_CHART)/values-dev.yaml --namespace $(DEV_NAMESPACE)
 
 deploy-dev:
 	helm upgrade --install survivor-network \
 		$(HELM_CHART) \
 		-f $(HELM_CHART)/values-dev.yaml \
-		--namespace $(NAMESPACE) \
+		--namespace $(DEV_NAMESPACE) \
 		--create-namespace \
 		--wait --timeout 5m
+
+smoke-dev-internal:
+	@echo "\n🏥 Cloud dev health checks (internal)..."
+	@for svc in chatbot-service graph-core incident-service participant-service admin-service agent-service; do \
+		kubectl --namespace $(DEV_NAMESPACE) exec deploy/$$svc -- wget -qO- http://localhost:8080/health 2>/dev/null && \
+		echo " ✅ $$svc" || echo " ❌ $$svc"; \
+	done
+
+cloud-dev-recreate:
+	@echo "\n🔄 Full cloud-dev recreate..."
+	@echo "  1. Terraform apply..."
+	$(MAKE) cloud-dev-plan
+	$(MAKE) cloud-dev-apply
+	@echo "  2. Get kubeconfig..."
+	$(MAKE) kubeconfig-dev
+	@echo "  3. Authorize SQL..."
+	$(MAKE) cloud-dev-authorize-sql
+	@echo "  4. Create secrets..."
+	$(MAKE) cloud-dev-create-secrets
+	@echo "  5. Build and push images..."
+	$(MAKE) cloud-dev-build-push
+	@echo "  6. Deploy with Helm..."
+	$(MAKE) deploy-dev
+	@echo "  7. Smoke test..."
+	$(MAKE) smoke-dev-internal
+	@echo "\n✅ Cloud dev environment recreated."
 
 # ============================================================
 # Database Init (manual fallback if initContainer didn't run)
