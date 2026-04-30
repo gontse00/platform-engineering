@@ -15,32 +15,66 @@ variable "zone" {
   default     = "europe-west2-a"
 }
 
-variable "cluster_name" {
-  description = "GKE cluster name"
+# --- Artifact Registry ---
+variable "artifact_registry_repo" {
+  description = "Artifact Registry repository name"
   type        = string
-  default     = "survivor-dev"
+  default     = "survivor-network"
 }
 
-variable "node_count" {
+# --- GKE ---
+variable "gke_cluster_name" {
+  description = "GKE cluster name"
+  type        = string
+  default     = "survivor-network-dev"
+}
+
+variable "gke_node_count" {
   description = "Number of nodes per zone"
   type        = number
   default     = 2
 }
 
-variable "machine_type" {
+variable "gke_machine_type" {
   description = "GCP machine type for cluster nodes"
   type        = string
   default     = "e2-standard-2"
 }
 
-variable "db_tier" {
+# --- Cloud SQL ---
+variable "cloud_sql_instance_name" {
+  description = "Cloud SQL instance name"
+  type        = string
+  default     = "survivor-network-dev-db"
+}
+
+variable "cloud_sql_database" {
+  description = "PostgreSQL database name"
+  type        = string
+  default     = "survivor"
+}
+
+variable "cloud_sql_user" {
+  description = "PostgreSQL user"
+  type        = string
+  default     = "survivor"
+}
+
+variable "cloud_sql_password" {
+  description = "PostgreSQL password"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloud_sql_tier" {
   description = "Cloud SQL instance tier"
   type        = string
   default     = "db-f1-micro"
 }
 
-variable "db_password" {
-  description = "PostgreSQL password for survivor user"
+# --- Cloud Storage ---
+variable "gcs_bucket_name" {
+  description = "Cloud Storage bucket name for attachments"
   type        = string
-  sensitive   = true
+  default     = "survivor-rescue-net-dev-attachments"
 }

@@ -25,24 +25,29 @@ variable "tier" {
   default = "db-f1-micro"
 }
 
+variable "instance_name" {
+  type    = string
+  default = "survivor-db-dev"
+}
+
 resource "google_sql_database_instance" "main" {
-  name             = "survivor-db-dev"
+  name             = var.instance_name
   database_version = "POSTGRES_16"
   region           = var.region
 
   settings {
     tier              = var.tier
-    availability_type = "ZONAL"  # dev — no HA needed
+    availability_type = "ZONAL" # dev — no HA needed
     disk_size         = 10
     disk_type         = "PD_SSD"
 
     ip_configuration {
-      ipv4_enabled    = true  # dev — allow public IP for simplicity
+      ipv4_enabled = true # dev — allow public IP for simplicity
       # For production: use private IP + VPC peering
     }
 
     backup_configuration {
-      enabled = false  # dev — no backups needed
+      enabled = false # dev — no backups needed
     }
 
     database_flags {
@@ -51,7 +56,7 @@ resource "google_sql_database_instance" "main" {
     }
   }
 
-  deletion_protection = false  # dev — allow easy teardown
+  deletion_protection = false # dev — allow easy teardown
 }
 
 resource "google_sql_database" "db" {

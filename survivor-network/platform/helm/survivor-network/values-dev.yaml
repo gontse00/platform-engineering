@@ -1,6 +1,6 @@
-# Cloud dev environment overrides
+# Cloud dev environment overrides (GCP)
 global:
-  imageRegistry: "africa-south1-docker.pkg.dev/PROJECT_ID/survivor-images"
+  imageRegistry: "europe-west2-docker.pkg.dev/survivor-rescue-net-dev/survivor-network"
   imagePullPolicy: Always
 
 services:
@@ -9,28 +9,78 @@ services:
     image:
       tag: "${IMAGE_TAG}"
     env:
-      LLM_ENABLED: "true"
+      # TODO: Replace with Cloud SQL private IP or connection name when VPC peering is configured
+      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
+      GRAPH_CORE_BASE_URL: "http://graph-core:8080"
+      AGENT_SERVICE_BASE_URL: "http://agent-service:8080"
+      INCIDENT_SERVICE_BASE_URL: "http://incident-service:8080"
+      LLM_ENABLED: "false"
     ingress:
+      enabled: true
       host: chatbot.survivor-dev.example.com
 
   adminService:
     image:
       tag: "${IMAGE_TAG}"
+    env:
+      GRAPH_CORE_URL: "http://graph-core:8080"
+      INCIDENT_SERVICE_URL: "http://incident-service:8080"
+      PARTICIPANT_SERVICE_URL: "http://participant-service:8080"
+      AUTH_MODE: "dev"
     ingress:
+      enabled: true
       host: admin.survivor-dev.example.com
 
   incidentService:
     image:
       tag: "${IMAGE_TAG}"
     env:
-      DATABASE_URL: "${DATABASE_URL}"
+      # TODO: Replace with Cloud SQL connection string from Terraform output
+      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
+      ENVIRONMENT: "dev"
     ingress:
+      enabled: true
       host: incidents.survivor-dev.example.com
 
   participantService:
     image:
       tag: "${IMAGE_TAG}"
     env:
-      DATABASE_URL: "${DATABASE_URL}"
+      # TODO: Replace with Cloud SQL connection string from Terraform output
+      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
     ingress:
+      enabled: true
       host: participants.survivor-dev.example.com
+
+  graphCore:
+    image:
+      tag: "${IMAGE_TAG}"
+    env:
+      # TODO: Replace with Cloud SQL connection string from Terraform output
+      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
+      LLM_ENABLED: "false"
+    ingress:
+      enabled: true
+      host: graph.survivor-dev.example.com
+
+  agentService:
+    image:
+      tag: "${IMAGE_TAG}"
+    env:
+      LLM_ENABLED: "false"
+    ingress:
+      enabled: false
+
+  chatbotUi:
+    image:
+      tag: "${IMAGE_TAG}"
+    ingress:
+      enabled: true
+      host: chat.survivor-dev.example.com
+
+  adminUi:
+    image:
+      tag: "${IMAGE_TAG}"
+    ingress:
+      enabled: true
+      host: dashboard.survivor-dev.example.com

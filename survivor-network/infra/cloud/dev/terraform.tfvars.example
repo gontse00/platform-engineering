@@ -1,8 +1,21 @@
-project_id   = "survivor-rescue-net-dev"
-region       = "europe-west2"
-zone         = "europe-west2-a"
-cluster_name = "survivor-dev"
-node_count   = 2
-machine_type = "e2-standard-2"
-db_tier      = "db-f1-micro"
-db_password  = "CHANGE_ME_survivor_dev_pw"
+project_id = "survivor-rescue-net-dev"
+region     = "europe-west2"
+zone       = "europe-west2-a"
+
+# Artifact Registry
+artifact_registry_repo = "survivor-network"
+
+# GKE
+gke_cluster_name = "survivor-network-dev"
+gke_node_count   = 2
+gke_machine_type = "e2-standard-2"
+
+# Cloud SQL
+cloud_sql_instance_name = "survivor-network-dev-db"
+cloud_sql_database      = "survivor"
+cloud_sql_user          = "survivor"
+cloud_sql_password      = "CHANGE_ME_use_a_strong_password"
+cloud_sql_tier          = "db-f1-micro"
+
+# Cloud Storage
+gcs_bucket_name = "survivor-rescue-net-dev-attachments"

@@ -64,6 +64,13 @@ help:
 	@echo "  make e2e-admin-local    — alias for e2e-admin"
 	@echo "  make init-chatbot-db    — create chatbot DB tables manually"
 	@echo "  make clean-start-local  — full rebuild + init + test"
+	@echo ""
+	@echo "=== Cloud Dev (GCP) ==="
+	@echo "  make cloud-dev-plan     — terraform plan"
+	@echo "  make cloud-dev-apply    — terraform apply"
+	@echo "  make cloud-dev-destroy  — terraform destroy"
+	@echo "  make kubeconfig-dev     — get GKE credentials"
+	@echo "  make deploy-dev         — helm deploy to cloud dev"
 
 # ============================================================
 # Local Workflow (Helm-based)
@@ -331,6 +338,12 @@ cloud-dev-plan:
 
 cloud-dev-apply:
 	cd infra/cloud/dev && terraform init && terraform apply
+
+cloud-dev-destroy:
+	cd infra/cloud/dev && terraform destroy
+
+kubeconfig-dev:
+	gcloud container clusters get-credentials survivor-network-dev --zone europe-west2-a --project survivor-rescue-net-dev
 
 deploy-dev:
 	helm upgrade --install survivor-network \

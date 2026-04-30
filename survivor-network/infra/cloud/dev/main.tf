@@ -21,9 +21,10 @@ provider "google" {
 
 # --- Container Registry (Artifact Registry) ---
 module "container_registry" {
-  source     = "../../modules/container-registry"
-  project_id = var.project_id
-  region     = var.region
+  source        = "../../modules/container-registry"
+  project_id    = var.project_id
+  region        = var.region
+  repository_id = var.artifact_registry_repo
 }
 
 # --- GKE Kubernetes Cluster ---
@@ -32,20 +33,21 @@ module "kubernetes_cluster" {
   project_id   = var.project_id
   region       = var.region
   zone         = var.zone
-  cluster_name = var.cluster_name
-  node_count   = var.node_count
-  machine_type = var.machine_type
+  cluster_name = var.gke_cluster_name
+  node_count   = var.gke_node_count
+  machine_type = var.gke_machine_type
 }
 
 # --- Cloud SQL PostgreSQL ---
 module "postgres" {
-  source      = "../../modules/postgres"
-  project_id  = var.project_id
-  region      = var.region
-  db_name     = "survivor"
-  db_user     = "survivor"
-  db_password = var.db_password
-  tier        = var.db_tier
+  source        = "../../modules/postgres"
+  project_id    = var.project_id
+  region        = var.region
+  instance_name = var.cloud_sql_instance_name
+  db_name       = var.cloud_sql_database
+  db_user       = var.cloud_sql_user
+  db_password   = var.cloud_sql_password
+  tier          = var.cloud_sql_tier
 }
 
 # --- Cloud Storage (attachments/evidence) ---
@@ -53,5 +55,5 @@ module "object_storage" {
   source      = "../../modules/object-storage"
   project_id  = var.project_id
   region      = var.region
-  bucket_name = "${var.project_id}-survivor-storage"
+  bucket_name = var.gcs_bucket_name
 }

@@ -1,6 +1,6 @@
-output "cluster_endpoint" {
-  description = "GKE cluster endpoint"
-  value       = module.kubernetes_cluster.endpoint
+output "registry_url" {
+  description = "Artifact Registry URL for docker push"
+  value       = module.container_registry.registry_url
 }
 
 output "cluster_name" {
@@ -8,20 +8,25 @@ output "cluster_name" {
   value       = module.kubernetes_cluster.cluster_name
 }
 
-output "registry_url" {
-  description = "Artifact Registry URL for docker push"
-  value       = module.container_registry.registry_url
+output "cluster_endpoint" {
+  description = "GKE cluster endpoint"
+  value       = module.kubernetes_cluster.endpoint
 }
 
-output "database_connection" {
-  description = "PostgreSQL connection string (private IP)"
-  value       = module.postgres.connection_string
-  sensitive   = true
+output "cluster_location" {
+  description = "GKE cluster location (zone)"
+  value       = var.zone
 }
 
 output "database_instance_name" {
   description = "Cloud SQL instance name"
   value       = module.postgres.instance_name
+}
+
+output "database_connection_string" {
+  description = "PostgreSQL connection string"
+  value       = module.postgres.connection_string
+  sensitive   = true
 }
 
 output "storage_bucket" {
