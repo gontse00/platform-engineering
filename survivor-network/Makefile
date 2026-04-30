@@ -24,6 +24,31 @@ DEV_NAMESPACE      ?= survivor-apps
 TF_DEV_DIR         := infra/cloud/dev
 TF_APPLY_PLAN      := tfplan
 TF_DESTROY_PLAN    := destroy.tfplan
+CLOUD_DEV_STRICT   ?= false
+CLOUD_DEV_NAMESPACES := survivor-apps ingress-nginx cert-manager external-secrets observability
+
+# Bootstrap Helm configuration
+INGRESS_NGINX_NAMESPACE ?= ingress-nginx
+INGRESS_NGINX_RELEASE   ?= ingress-nginx
+INGRESS_NGINX_CHART     ?= ingress-nginx/ingress-nginx
+INGRESS_NGINX_TIMEOUT   ?= 10m
+INGRESS_NGINX_CPU_REQUEST    ?= 100m
+INGRESS_NGINX_MEMORY_REQUEST ?= 128Mi
+INGRESS_NGINX_CPU_LIMIT      ?= 500m
+INGRESS_NGINX_MEMORY_LIMIT   ?= 512Mi
+INGRESS_NGINX_EXTRA_SET      ?=
+
+CERT_MANAGER_NAMESPACE ?= cert-manager
+CERT_MANAGER_RELEASE   ?= cert-manager
+CERT_MANAGER_CHART     ?= jetstack/cert-manager
+CERT_MANAGER_TIMEOUT   ?= 10m
+CERT_MANAGER_EXTRA_SET ?=
+
+EXTERNAL_SECRETS_NAMESPACE ?= external-secrets
+EXTERNAL_SECRETS_RELEASE   ?= external-secrets
+EXTERNAL_SECRETS_CHART     ?= external-secrets/external-secrets
+EXTERNAL_SECRETS_TIMEOUT   ?= 10m
+EXTERNAL_SECRETS_EXTRA_SET ?=
 
 # All service images (must match Helm values)
 SERVICES := chatbot-service graph-core chatbot-ui admin-ui agent-service incident-service participant-service admin-service
@@ -42,6 +67,9 @@ DIR_admin-service       := ./admin-service
         status health smoke-local local-test local-sim local-sim-full local-sim-100 \
         helm-lint-local helm-template-local logs restart clean \
         cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-plan-destroy cloud-dev-destroy \
+        cloud-dev-bootstrap cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress \
+        cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret \
+        cloud-dev-bootstrap-verify cloud-dev-full-recreate \
         deploy-dev kubeconfig-dev cloud-dev-build-push cloud-dev-authorize-sql cloud-dev-create-secrets \
         helm-template-dev smoke-dev-internal cloud-dev-recreate \
         terraform-state-bucket-create terraform-state-enable-versioning terraform-state-migrate \
@@ -91,13 +119,17 @@ help:
 	@echo "  make cloud-dev-apply    — apply saved tfplan"
 	@echo "  make cloud-dev-plan-destroy — plan destroy + save"
 	@echo "  make cloud-dev-destroy  — apply saved destroy plan"
-	@echo "  make kubeconfig-dev     — get GKE credentials"
+	@echo "  make cloud-dev-bootstrap — bootstrap GKE add-ons and app prerequisites"
+	@echo "  make cloud-dev-kubeconfig — get GKE credentials"
+	@echo "  make kubeconfig-dev     — compatibility alias for cloud-dev-kubeconfig"
 	@echo "  make cloud-dev-build-push — build + push all images"
 	@echo "  make cloud-dev-authorize-sql — authorize GKE→Cloud SQL"
-	@echo "  make cloud-dev-create-secrets — create DB secret"
+	@echo "  make cloud-dev-create-db-secret — create DB secret from DATABASE_URL"
+	@echo "  make cloud-dev-create-secrets — legacy interactive DB secret fallback"
 	@echo "  make helm-template-dev  — render dev Helm templates"
 	@echo "  make deploy-dev         — helm deploy to cloud dev"
 	@echo "  make smoke-dev-internal — health check pods internally"
+	@echo "  make cloud-dev-full-recreate — plan/apply/bootstrap/build/deploy/smoke"
 	@echo "  make cloud-dev-recreate — full teardown + recreate"
 
 # ============================================================
@@ -394,8 +426,66 @@ cloud-dev-destroy:
 	cd $(TF_DEV_DIR) && terraform apply $(TF_DESTROY_PLAN)
 	@echo "✅ Infrastructure destroyed."
 
-kubeconfig-dev:
+cloud-dev-bootstrap: cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret cloud-dev-bootstrap-verify
+	@echo "\n✅ Cloud dev bootstrap complete."
+
+cloud-dev-kubeconfig:
 	gcloud container clusters get-credentials $(GKE_CLUSTER) --zone $(GCP_ZONE) --project $(GCP_PROJECT)
+
+kubeconfig-dev: cloud-dev-kubeconfig
+
+cloud-dev-create-namespaces:
+	@echo "\n📦 Creating cloud-dev namespaces..."
+	@for ns in $(CLOUD_DEV_NAMESPACES); do \
+		echo "  Ensuring namespace $$ns..."; \
+		kubectl create namespace $$ns --dry-run=client -o yaml | kubectl apply -f -; \
+	done
+	@echo "✅ Namespaces ready."
+
+cloud-dev-install-ingress:
+	@echo "\n🌐 Installing ingress-nginx..."
+	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
+	helm repo update
+	helm upgrade --install $(INGRESS_NGINX_RELEASE) $(INGRESS_NGINX_CHART) \
+		--namespace $(INGRESS_NGINX_NAMESPACE) \
+		--create-namespace \
+		--set controller.service.type=LoadBalancer \
+		--set controller.metrics.enabled=true \
+		--set controller.resources.requests.cpu=$(INGRESS_NGINX_CPU_REQUEST) \
+		--set controller.resources.requests.memory=$(INGRESS_NGINX_MEMORY_REQUEST) \
+		--set controller.resources.limits.cpu=$(INGRESS_NGINX_CPU_LIMIT) \
+		--set controller.resources.limits.memory=$(INGRESS_NGINX_MEMORY_LIMIT) \
+		$(INGRESS_NGINX_EXTRA_SET) \
+		--wait \
+		--timeout $(INGRESS_NGINX_TIMEOUT)
+	@echo "✅ ingress-nginx ready."
+
+cloud-dev-install-cert-manager:
+	@echo "\n🔐 Installing cert-manager..."
+	helm repo add jetstack https://charts.jetstack.io || true
+	helm repo update
+	helm upgrade --install $(CERT_MANAGER_RELEASE) $(CERT_MANAGER_CHART) \
+		--namespace $(CERT_MANAGER_NAMESPACE) \
+		--create-namespace \
+		--set crds.enabled=true \
+		$(CERT_MANAGER_EXTRA_SET) \
+		--wait \
+		--timeout $(CERT_MANAGER_TIMEOUT)
+	@echo "✅ cert-manager ready."
+	@echo "   ClusterIssuer placeholders are in platform/bootstrap/cert-manager/ and are not applied automatically."
+
+cloud-dev-install-external-secrets:
+	@echo "\n🔑 Installing External Secrets Operator..."
+	helm repo add external-secrets https://charts.external-secrets.io || true
+	helm repo update
+	helm upgrade --install $(EXTERNAL_SECRETS_RELEASE) $(EXTERNAL_SECRETS_CHART) \
+		--namespace $(EXTERNAL_SECRETS_NAMESPACE) \
+		--create-namespace \
+		$(EXTERNAL_SECRETS_EXTRA_SET) \
+		--wait \
+		--timeout $(EXTERNAL_SECRETS_TIMEOUT)
+	@echo "✅ External Secrets Operator ready."
+	@echo "   Placeholder GCP Secret Manager manifests are in platform/bootstrap/external-secrets/ and are not applied automatically."
 
 cloud-dev-build-push:
 	@echo "\n🔨 Building and pushing all images to $(REGISTRY)..."
@@ -417,14 +507,44 @@ cloud-dev-authorize-sql:
 		--quiet
 	@echo "✅ Cloud SQL authorized for GKE node IPs."
 
+cloud-dev-create-db-secret:
+	@echo "\n🗄️  Creating Kubernetes DB secret for cloud-dev..."
+	@if [ -n "$$DATABASE_URL" ]; then \
+		kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
+		kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
+			--from-literal=DATABASE_URL="$$DATABASE_URL" \
+			--dry-run=client -o yaml | kubectl apply -f -; \
+		echo "✅ Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
+	else \
+		echo "⚠️  DATABASE_URL is not set; skipping survivor-db-url secret creation."; \
+		echo "   Example: DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-create-db-secret"; \
+		if [ "$(CLOUD_DEV_STRICT)" = "true" ]; then \
+			echo "❌ CLOUD_DEV_STRICT=true, failing because DATABASE_URL is missing."; \
+			exit 1; \
+		fi; \
+	fi
+
 cloud-dev-create-secrets:
-	@echo "Creating Kubernetes secrets for cloud-dev..."
-	@echo "Enter Cloud SQL DATABASE_URL (e.g., postgresql+psycopg2://survivor:PASSWORD@IP:5432/survivor):"
-	@read -p "DATABASE_URL: " DB_URL && \
-	kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
-		--from-literal=DATABASE_URL="$$DB_URL" \
-		--dry-run=client -o yaml | kubectl apply -f -
-	@echo "✅ Secret survivor-db-url created/updated."
+	@echo "\n🗄️  Creating Kubernetes DB secret for cloud-dev..."
+	@if [ -n "$$DATABASE_URL" ]; then \
+		kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
+		kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
+			--from-literal=DATABASE_URL="$$DATABASE_URL" \
+			--dry-run=client -o yaml | kubectl apply -f -; \
+		echo "✅ Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
+	else \
+		echo "Enter Cloud SQL DATABASE_URL (e.g., postgresql+psycopg2://survivor:PASSWORD@IP:5432/survivor):"; \
+		read -p "DATABASE_URL: " DB_URL; \
+		if [ -z "$$DB_URL" ]; then \
+			echo "❌ DATABASE_URL cannot be empty for interactive secret creation."; \
+			exit 1; \
+		fi; \
+		kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
+		kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
+			--from-literal=DATABASE_URL="$$DB_URL" \
+			--dry-run=client -o yaml | kubectl apply -f -; \
+		echo "✅ Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
+	fi
 
 helm-template-dev:
 	helm template survivor-network $(HELM_CHART) -f $(HELM_CHART)/values-dev.yaml --namespace $(DEV_NAMESPACE)
@@ -443,6 +563,35 @@ smoke-dev-internal:
 		kubectl --namespace $(DEV_NAMESPACE) exec deploy/$$svc -- wget -qO- http://localhost:8080/health 2>/dev/null && \
 		echo " ✅ $$svc" || echo " ❌ $$svc"; \
 	done
+
+cloud-dev-bootstrap-verify:
+	@echo "\n🔎 Verifying cloud-dev bootstrap..."
+	kubectl get nodes
+	kubectl get ns
+	kubectl -n ingress-nginx get pods
+	kubectl -n cert-manager get pods
+	kubectl -n external-secrets get pods
+	@if kubectl -n $(DEV_NAMESPACE) get secret survivor-db-url >/dev/null 2>&1; then \
+		echo "✅ survivor-db-url secret exists in namespace $(DEV_NAMESPACE)."; \
+	else \
+		echo "⚠️  survivor-db-url secret is missing in namespace $(DEV_NAMESPACE)."; \
+		echo "   Set DATABASE_URL and run: make cloud-dev-create-db-secret"; \
+		if [ "$(CLOUD_DEV_STRICT)" = "true" ]; then \
+			echo "❌ CLOUD_DEV_STRICT=true, failing because survivor-db-url is missing."; \
+			exit 1; \
+		fi; \
+	fi
+	@echo "✅ Bootstrap verification complete."
+
+cloud-dev-full-recreate:
+	@echo "\n🔄 Full cloud-dev recreate without destroy..."
+	$(MAKE) cloud-dev-plan
+	$(MAKE) cloud-dev-apply
+	$(MAKE) cloud-dev-bootstrap
+	$(MAKE) cloud-dev-build-push
+	$(MAKE) deploy-dev
+	$(MAKE) smoke-dev-internal
+	@echo "\n✅ Cloud dev full recreate complete."
 
 cloud-dev-recreate:
 	@echo "\n🔄 Full cloud-dev recreate..."
