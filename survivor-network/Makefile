@@ -21,6 +21,9 @@ IMAGE_TAG          ?= dev
 REGISTRY           ?= $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(AR_REPO)
 CLOUD_SQL_INSTANCE ?= survivor-network-dev-db
 DEV_NAMESPACE      ?= survivor-apps
+TF_DEV_DIR         := infra/cloud/dev
+TF_APPLY_PLAN      := tfplan
+TF_DESTROY_PLAN    := destroy.tfplan
 
 # All service images (must match Helm values)
 SERVICES := chatbot-service graph-core chatbot-ui admin-ui agent-service incident-service participant-service admin-service
@@ -38,7 +41,7 @@ DIR_admin-service       := ./admin-service
 .PHONY: help all local-up local-down local-build local-load-kind deploy-local-helm \
         status health smoke-local local-test local-sim local-sim-full local-sim-100 \
         helm-lint-local helm-template-local logs restart clean \
-        cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-destroy \
+        cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-plan-destroy cloud-dev-destroy \
         deploy-dev kubeconfig-dev cloud-dev-build-push cloud-dev-authorize-sql cloud-dev-create-secrets \
         helm-template-dev smoke-dev-internal cloud-dev-recreate \
         terraform-state-bucket-create terraform-state-enable-versioning terraform-state-migrate \
@@ -84,9 +87,10 @@ help:
 	@echo "  make cloud-dev-init     — terraform init"
 	@echo "  make cloud-dev-fmt      — terraform fmt"
 	@echo "  make cloud-dev-validate — terraform validate"
-	@echo "  make cloud-dev-plan     — terraform plan"
-	@echo "  make cloud-dev-apply    — terraform apply"
-	@echo "  make cloud-dev-destroy  — terraform destroy"
+	@echo "  make cloud-dev-plan     — plan + save to tfplan"
+	@echo "  make cloud-dev-apply    — apply saved tfplan"
+	@echo "  make cloud-dev-plan-destroy — plan destroy + save"
+	@echo "  make cloud-dev-destroy  — apply saved destroy plan"
 	@echo "  make kubeconfig-dev     — get GKE credentials"
 	@echo "  make cloud-dev-build-push — build + push all images"
 	@echo "  make cloud-dev-authorize-sql — authorize GKE→Cloud SQL"
@@ -358,22 +362,37 @@ admin-svc:
 # ============================================================
 
 cloud-dev-init:
-	cd infra/cloud/dev && terraform init
+	cd $(TF_DEV_DIR) && terraform init
 
 cloud-dev-fmt:
 	terraform fmt -recursive infra/
 
 cloud-dev-validate:
-	cd infra/cloud/dev && terraform validate
+	cd $(TF_DEV_DIR) && terraform validate
 
 cloud-dev-plan:
-	cd infra/cloud/dev && terraform init && terraform plan -out=tfplan
+	@echo "\n📋 Planning cloud-dev infrastructure..."
+	cd $(TF_DEV_DIR) && terraform init && terraform plan -out=$(TF_APPLY_PLAN)
+	@echo "✅ Plan saved to $(TF_DEV_DIR)/$(TF_APPLY_PLAN)"
+	@echo "   Review with: cd $(TF_DEV_DIR) && terraform show $(TF_APPLY_PLAN)"
+	@echo "   Apply with:  make cloud-dev-apply"
 
 cloud-dev-apply:
-	cd infra/cloud/dev && terraform apply tfplan
+	@echo "\n🏗️  Applying saved plan..."
+	cd $(TF_DEV_DIR) && terraform apply $(TF_APPLY_PLAN)
+	@echo "✅ Infrastructure applied."
+
+cloud-dev-plan-destroy:
+	@echo "\n⚠️  Planning infrastructure DESTROY..."
+	cd $(TF_DEV_DIR) && terraform plan -destroy -out=$(TF_DESTROY_PLAN)
+	@echo "✅ Destroy plan saved to $(TF_DEV_DIR)/$(TF_DESTROY_PLAN)"
+	@echo "   Review with: cd $(TF_DEV_DIR) && terraform show $(TF_DESTROY_PLAN)"
+	@echo "   Destroy with: make cloud-dev-destroy"
 
 cloud-dev-destroy:
-	cd infra/cloud/dev && terraform destroy
+	@echo "\n🛑 Applying saved destroy plan..."
+	cd $(TF_DEV_DIR) && terraform apply $(TF_DESTROY_PLAN)
+	@echo "✅ Infrastructure destroyed."
 
 kubeconfig-dev:
 	gcloud container clusters get-credentials $(GKE_CLUSTER) --zone $(GCP_ZONE) --project $(GCP_PROJECT)

@@ -3,6 +3,8 @@
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+**/tfplan
+**/*.tfplan
 
 # Environment / Secrets
 .env
