@@ -5,6 +5,9 @@ global:
   imageRegistry: "europe-west2-docker.pkg.dev/survivor-rescue-net-dev/survivor-network"
   imagePullPolicy: Always
 
+initDb:
+  enabled: false
+
 services:
   chatbotService:
     replicas: 2
