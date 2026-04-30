@@ -41,6 +41,7 @@ DIR_admin-service       := ./admin-service
         cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-destroy \
         deploy-dev kubeconfig-dev cloud-dev-build-push cloud-dev-authorize-sql cloud-dev-create-secrets \
         helm-template-dev smoke-dev-internal cloud-dev-recreate \
+        terraform-state-bucket-create terraform-state-enable-versioning terraform-state-migrate \
         chatbot graph chatbot-ui admin-ui agent incident participant admin-svc
 
 # ============================================================
@@ -512,3 +513,22 @@ e2e-admin:
 	echo "  ✅ Admin workflow E2E passed"
 
 e2e-admin-local: e2e-admin
+
+# ============================================================
+# Terraform Remote State
+# ============================================================
+
+terraform-state-bucket-create:
+	@echo "Creating GCS bucket for Terraform state..."
+	gsutil mb -p $(GCP_PROJECT) -l $(GCP_REGION) gs://survivor-terraform-state-dev
+	@echo "✅ Bucket created: gs://survivor-terraform-state-dev"
+
+terraform-state-enable-versioning:
+	@echo "Enabling versioning on state bucket..."
+	gsutil versioning set on gs://survivor-terraform-state-dev
+	@echo "✅ Versioning enabled."
+
+terraform-state-migrate:
+	@echo "Migrating Terraform state to GCS backend..."
+	cd infra/cloud/dev && terraform init -migrate-state
+	@echo "✅ State migration complete. Verify with: terraform state list"
