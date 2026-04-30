@@ -11,8 +11,14 @@ metadata:
     {{- include "survivor-network.labels" $ | nindent 4 }}
 data:
   SERVICE_NAME: {{ $svc.name | quote }}
+  {{- $secretNames := list }}
+  {{- range $svc.secretEnv }}
+  {{- $secretNames = append $secretNames .name }}
+  {{- end }}
   {{- range $envKey, $envVal := $svc.env }}
+  {{- if not (has $envKey $secretNames) }}
   {{ $envKey }}: {{ $envVal | quote }}
+  {{- end }}
   {{- end }}
 {{- end }}
 {{- end }}
