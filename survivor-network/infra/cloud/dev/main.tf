@@ -1,8 +1,7 @@
 # =============================================================================
-# Survivor Network — Cloud Dev Environment
-# =============================================================================
-# This Terraform configuration provisions the cloud dev environment.
-# Designed for GCP but module interfaces are generic.
+# Survivor Network — Cloud Dev Environment (GCP)
+# Project: survivor-rescue-net-dev
+# Region: europe-west2
 # =============================================================================
 
 terraform {
@@ -20,33 +19,36 @@ provider "google" {
   region  = var.region
 }
 
-# --- Container Registry ---
+# --- Container Registry (Artifact Registry) ---
 module "container_registry" {
   source     = "../../modules/container-registry"
   project_id = var.project_id
   region     = var.region
 }
 
-# --- Kubernetes Cluster ---
+# --- GKE Kubernetes Cluster ---
 module "kubernetes_cluster" {
   source       = "../../modules/kubernetes-cluster"
   project_id   = var.project_id
   region       = var.region
+  zone         = var.zone
   cluster_name = var.cluster_name
   node_count   = var.node_count
   machine_type = var.machine_type
 }
 
-# --- PostgreSQL ---
+# --- Cloud SQL PostgreSQL ---
 module "postgres" {
-  source       = "../../modules/postgres"
-  project_id   = var.project_id
-  region       = var.region
-  db_name      = "survivor"
-  db_user      = "survivor"
+  source      = "../../modules/postgres"
+  project_id  = var.project_id
+  region      = var.region
+  db_name     = "survivor"
+  db_user     = "survivor"
+  db_password = var.db_password
+  tier        = var.db_tier
 }
 
-# --- Object Storage ---
+# --- Cloud Storage (attachments/evidence) ---
 module "object_storage" {
   source      = "../../modules/object-storage"
   project_id  = var.project_id

@@ -1,5 +1,8 @@
-project_id   = "your-gcp-project-id"
-region       = "africa-south1"
+project_id   = "survivor-rescue-net-dev"
+region       = "europe-west2"
+zone         = "europe-west2-a"
 cluster_name = "survivor-dev"
 node_count   = 2
 machine_type = "e2-standard-2"
+db_tier      = "db-f1-micro"
+db_password  = "CHANGE_ME_survivor_dev_pw"
