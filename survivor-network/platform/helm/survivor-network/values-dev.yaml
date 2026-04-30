@@ -11,13 +11,14 @@ services:
     image:
       tag: "dev"
     env:
-      # TODO: Replace DATABASE_URL with real Cloud SQL connectivity.
-      # Options: Cloud SQL Auth Proxy sidecar, private IP, or public IP with authorized networks.
-      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
       GRAPH_CORE_BASE_URL: "http://graph-core:8080"
       AGENT_SERVICE_BASE_URL: "http://agent-service:8080"
       INCIDENT_SERVICE_BASE_URL: "http://incident-service:8080"
       LLM_ENABLED: "false"
+    secretEnv:
+      - name: DATABASE_URL
+        secretName: survivor-db-url
+        secretKey: DATABASE_URL
     ingress:
       enabled: true
       host: chatbot.survivor-dev.example.com
@@ -38,9 +39,11 @@ services:
     image:
       tag: "dev"
     env:
-      # TODO: Replace with Cloud SQL connection string from Terraform output
-      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
       ENVIRONMENT: "dev"
+    secretEnv:
+      - name: DATABASE_URL
+        secretName: survivor-db-url
+        secretKey: DATABASE_URL
     ingress:
       enabled: true
       host: incidents.survivor-dev.example.com
@@ -48,9 +51,10 @@ services:
   participantService:
     image:
       tag: "dev"
-    env:
-      # TODO: Replace with Cloud SQL connection string from Terraform output
-      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
+    secretEnv:
+      - name: DATABASE_URL
+        secretName: survivor-db-url
+        secretKey: DATABASE_URL
     ingress:
       enabled: true
       host: participants.survivor-dev.example.com
@@ -59,9 +63,11 @@ services:
     image:
       tag: "dev"
     env:
-      # TODO: Replace with Cloud SQL connection string from Terraform output
-      DATABASE_URL: "postgresql+psycopg2://survivor:PASSWORD@CLOUD_SQL_IP:5432/survivor"
       LLM_ENABLED: "false"
+    secretEnv:
+      - name: DATABASE_URL
+        secretName: survivor-db-url
+        secretKey: DATABASE_URL
     ingress:
       enabled: true
       host: graph.survivor-dev.example.com

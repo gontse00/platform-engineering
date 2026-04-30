@@ -30,6 +30,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ $svc.name }}-config
+          {{- if $svc.secretEnv }}
+          env:
+            {{- range $svc.secretEnv }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .secretKey }}
+            {{- end }}
+          {{- end }}
           {{- if $svc.probes }}
           {{- if $svc.probes.readiness }}
           readinessProbe:
