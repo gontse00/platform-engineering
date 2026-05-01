@@ -22,6 +22,8 @@ REGISTRY           ?= $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(AR_REPO)
 DOCKER_PLATFORM    ?= linux/amd64
 BUILDX_BUILDER     ?= survivor-builder
 CLOUD_SQL_INSTANCE ?= survivor-network-dev-db
+CLOUD_SQL_DATABASE ?= survivor
+CLOUD_SQL_USER     ?= survivor
 DEV_NAMESPACE      ?= survivor-apps
 TF_DEV_DIR         := infra/cloud/dev
 TF_APPLY_PLAN      := tfplan
@@ -32,6 +34,10 @@ SMOKE_DEV_SERVICES ?= chatbot-service graph-core incident-service participant-se
 SMOKE_CURL_IMAGE   ?= curlimages/curl
 CLOUD_DEV_SHUTDOWN_TIMEOUT ?= 180s
 APP_LABEL_SELECTOR ?= app.kubernetes.io/part-of=survivor-network
+CLOUD_DEV_DOMAIN ?= dev.rescuenet.co.za
+GCP_SECRET_DB_URL ?= survivor-db-url
+CLOUD_SQL_CONNECTION_NAME ?= $(GCP_PROJECT):$(GCP_REGION):$(CLOUD_SQL_INSTANCE)
+CONFIRM_PROD_TLS ?= false
 
 # Bootstrap Helm configuration
 INGRESS_NGINX_NAMESPACE ?= ingress-nginx
@@ -74,10 +80,13 @@ DIR_admin-service       := ./admin-service
         status health smoke-local local-test local-sim local-sim-full local-sim-100 \
         helm-lint-local helm-template-local logs restart clean \
         cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-plan-destroy cloud-dev-destroy \
-        cloud-dev-pre-destroy cloud-dev-pre-destroy-check cloud-dev-shutdown-apps cloud-dev-uninstall-apps cloud-dev-drain-db cloud-dev-destroy-safe cloud-dev-destroy-safe-check \
-        cloud-dev-bootstrap cloud-dev-platform-ready cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress \
-        cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret \
+        cloud-dev-pre-destroy cloud-dev-pre-destroy-check cloud-dev-shutdown-apps cloud-dev-uninstall-apps cloud-dev-drain-db cloud-dev-clean-db-owned cloud-dev-destroy-safe cloud-dev-destroy-safe-check \
+        cloud-dev-bootstrap cloud-dev-platform-ready cloud-dev-kubeconfig cloud-dev-kubeconfig-if-present cloud-dev-create-namespaces cloud-dev-install-ingress \
+        cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret cloud-dev-create-db-secret-from-tf \
         cloud-dev-bootstrap-verify cloud-dev-buildx-bootstrap cloud-dev-verify-images cloud-dev-restart-apps cloud-dev-full-recreate \
+        cloud-dev-dns-info cloud-dev-tls-apply-staging-issuer cloud-dev-tls-apply-prod-issuer cloud-dev-tls-verify \
+        cloud-dev-secret-create-db-url cloud-dev-secret-put-db-url cloud-dev-secret-describe-db-url \
+        cloud-dev-external-secrets-apply cloud-dev-external-secrets-verify cloud-dev-sql-info \
         deploy-dev kubeconfig-dev cloud-dev-build-push cloud-dev-authorize-sql cloud-dev-create-secrets \
         helm-template-dev smoke-dev-internal smoke-dev-internal-verbose cloud-dev-recreate \
         terraform-state-bucket-create terraform-state-enable-versioning terraform-state-migrate \
@@ -129,6 +138,7 @@ help:
 	@echo "  make cloud-dev-destroy  — apply saved destroy plan"
 	@echo "  make cloud-dev-pre-destroy — gracefully stop apps before destroy"
 	@echo "  make cloud-dev-pre-destroy-check — inspect pre-destroy state without mutating"
+	@echo "  make cloud-dev-clean-db-owned — drop DB objects owned by the app role before destroy"
 	@echo "  make cloud-dev-destroy-safe — pre-destroy + plan destroy + destroy"
 	@echo "  make cloud-dev-destroy-safe-check — print safe destroy flow without mutating"
 	@echo "  make cloud-dev-bootstrap — bootstrap GKE add-ons and app prerequisites"
@@ -141,7 +151,14 @@ help:
 	@echo "  make cloud-dev-restart-apps — restart app deployments and watch pods"
 	@echo "  make cloud-dev-authorize-sql — authorize GKE→Cloud SQL"
 	@echo "  make cloud-dev-create-db-secret — create DB secret from DATABASE_URL"
+	@echo "  make cloud-dev-create-db-secret-from-tf — create DB secret from Terraform output"
 	@echo "  make cloud-dev-create-secrets — legacy interactive DB secret fallback"
+	@echo "  make cloud-dev-dns-info — print rescuenet.co.za DNS records and ingress IP"
+	@echo "  make cloud-dev-tls-verify — inspect cert-manager issuers/certificates"
+	@echo "  make cloud-dev-secret-create-db-url — create Secret Manager DB secret shell"
+	@echo "  make cloud-dev-secret-put-db-url — add DATABASE_URL as Secret Manager version"
+	@echo "  make cloud-dev-external-secrets-verify — inspect External Secrets status"
+	@echo "  make cloud-dev-sql-info — print Cloud SQL public/Auth Proxy migration info"
 	@echo "  make helm-template-dev  — render dev Helm templates"
 	@echo "  make deploy-dev         — helm deploy to cloud dev"
 	@echo "  make smoke-dev-internal — health check pods internally"
@@ -443,15 +460,16 @@ cloud-dev-destroy:
 	cd $(TF_DEV_DIR) && terraform apply $(TF_DESTROY_PLAN)
 	@echo "✅ Infrastructure destroyed."
 
-cloud-dev-pre-destroy: cloud-dev-kubeconfig cloud-dev-shutdown-apps cloud-dev-drain-db cloud-dev-uninstall-apps
+cloud-dev-pre-destroy: cloud-dev-kubeconfig-if-present cloud-dev-shutdown-apps cloud-dev-drain-db cloud-dev-clean-db-owned cloud-dev-uninstall-apps
 	@echo "\nSUCCESS: Cloud dev pre-destroy shutdown complete."
 
 cloud-dev-pre-destroy-check:
 	@echo "\nINFO: Pre-destroy dry-run checklist for cloud-dev."
 	@echo "INFO: Real pre-destroy command sequence:"
-	@echo "      make cloud-dev-kubeconfig"
+	@echo "      make cloud-dev-kubeconfig-if-present"
 	@echo "      make cloud-dev-shutdown-apps"
 	@echo "      make cloud-dev-drain-db"
+	@echo "      make cloud-dev-clean-db-owned"
 	@echo "      make cloud-dev-uninstall-apps"
 	@echo "\nINFO: Current Kubernetes context:"
 	@kubectl config current-context || true
@@ -555,6 +573,50 @@ cloud-dev-drain-db:
 	kubectl -n $(DEV_NAMESPACE) get svc,endpoints || true; \
 	echo "SUCCESS: No application pods remain in $(DEV_NAMESPACE)."
 
+cloud-dev-clean-db-owned:
+	@echo "\nINFO: Cleaning PostgreSQL objects owned by role $(CLOUD_SQL_USER) before Cloud SQL user deletion..."
+	@set -e; \
+	DB_URL="$${DATABASE_URL:-}"; \
+	if [ -z "$$DB_URL" ]; then \
+		DB_URL="$$(kubectl -n $(DEV_NAMESPACE) get secret survivor-db-url -o jsonpath='{.data.DATABASE_URL}' 2>/dev/null | base64 --decode || true)"; \
+	fi; \
+	if [ -z "$$DB_URL" ]; then \
+		DB_URL="$$(cd $(TF_DEV_DIR) && terraform output -raw database_connection_string 2>/dev/null || true)"; \
+	fi; \
+	if [ -z "$$DB_URL" ]; then \
+		echo "ERROR: Could not determine DATABASE_URL from environment, Kubernetes secret, or Terraform output."; \
+		echo "INFO: Pass it explicitly:"; \
+		echo "      DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-clean-db-owned"; \
+		exit 1; \
+	fi; \
+	if kubectl get namespace $(DEV_NAMESPACE) >/dev/null 2>&1; then \
+		echo "INFO: Running DB cleanup from a temporary Kubernetes pod."; \
+		kubectl -n $(DEV_NAMESPACE) delete pod db-destroy-cleanup --ignore-not-found --wait=false >/dev/null 2>&1 || true; \
+		kubectl -n $(DEV_NAMESPACE) run db-destroy-cleanup \
+			--image=postgres:16-alpine \
+			--rm -i \
+			--restart=Never \
+			--env="DATABASE_URL=$$DB_URL" \
+			--env="DB_OWNER=$(CLOUD_SQL_USER)" \
+			--command -- sh -c 'PSQL_URL=$$(printf "%s" "$$DATABASE_URL" | sed "s#^postgresql+[^:]*://#postgresql://#"); echo "INFO: Dropping objects owned by role $$DB_OWNER in database $(CLOUD_SQL_DATABASE)..."; psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$$DB_OWNER\" CASCADE;"'; \
+	elif command -v docker >/dev/null 2>&1; then \
+		echo "WARN: Kubernetes is unavailable; running DB cleanup with local Docker."; \
+		docker run --rm \
+			-e "DATABASE_URL=$$DB_URL" \
+			-e "DB_OWNER=$(CLOUD_SQL_USER)" \
+			postgres:16-alpine \
+			sh -c 'PSQL_URL=$$(printf "%s" "$$DATABASE_URL" | sed "s#^postgresql+[^:]*://#postgresql://#"); echo "INFO: Dropping objects owned by role $$DB_OWNER in database $(CLOUD_SQL_DATABASE)..."; psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$$DB_OWNER\" CASCADE;"'; \
+	elif command -v psql >/dev/null 2>&1; then \
+		echo "WARN: Kubernetes is unavailable; running DB cleanup with local psql."; \
+		PSQL_URL="$$(printf "%s" "$$DB_URL" | sed "s#^postgresql+[^:]*://#postgresql://#")"; \
+		psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$(CLOUD_SQL_USER)\" CASCADE;"; \
+	else \
+		echo "ERROR: Kubernetes is unavailable and neither docker nor psql is installed locally."; \
+		echo "INFO: Install Docker or psql, or run from an environment that can reach Cloud SQL."; \
+		exit 1; \
+	fi; \
+	echo "SUCCESS: PostgreSQL objects owned by role $(CLOUD_SQL_USER) were dropped."
+
 cloud-dev-destroy-safe:
 	@echo "\nINFO: Running safe cloud-dev destroy workflow..."
 	$(MAKE) cloud-dev-pre-destroy
@@ -584,6 +646,16 @@ cloud-dev-kubeconfig:
 	@echo "\nINFO: Refreshing kubeconfig for $(GKE_CLUSTER) in $(GCP_ZONE)..."
 	gcloud container clusters get-credentials $(GKE_CLUSTER) --zone $(GCP_ZONE) --project $(GCP_PROJECT)
 	@echo "SUCCESS: kubeconfig refreshed."
+
+cloud-dev-kubeconfig-if-present:
+	@echo "\nINFO: Refreshing kubeconfig for $(GKE_CLUSTER) in $(GCP_ZONE) if the cluster exists..."
+	@set -e; \
+	if gcloud container clusters describe $(GKE_CLUSTER) --zone $(GCP_ZONE) --project $(GCP_PROJECT) >/dev/null 2>&1; then \
+		gcloud container clusters get-credentials $(GKE_CLUSTER) --zone $(GCP_ZONE) --project $(GCP_PROJECT); \
+		echo "SUCCESS: kubeconfig refreshed."; \
+	else \
+		echo "WARN: GKE cluster $(GKE_CLUSTER) was not found; skipping Kubernetes cleanup steps that require a live cluster."; \
+	fi
 
 kubeconfig-dev: cloud-dev-kubeconfig
 
@@ -730,20 +802,40 @@ cloud-dev-authorize-sql:
 cloud-dev-create-db-secret:
 	@echo "\nINFO: Creating Kubernetes DB secret for cloud-dev..."
 	@set -e; \
-	if [ -n "$$DATABASE_URL" ]; then \
+	DB_URL="$$DATABASE_URL"; \
+	if [ -z "$$DB_URL" ]; then \
+		echo "INFO: DATABASE_URL is not set; trying Terraform output database_connection_string."; \
+		DB_URL="$$(cd $(TF_DEV_DIR) && terraform output -raw database_connection_string 2>/dev/null || true)"; \
+	fi; \
+	if [ -n "$$DB_URL" ]; then \
 		kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
 		kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
-			--from-literal=DATABASE_URL="$$DATABASE_URL" \
+			--from-literal=DATABASE_URL="$$DB_URL" \
 			--dry-run=client -o yaml | kubectl apply -f -; \
 		echo "SUCCESS: Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
 	else \
-		echo "WARN: DATABASE_URL is not set; skipping survivor-db-url secret creation."; \
+		echo "WARN: DATABASE_URL is not set and Terraform output database_connection_string is unavailable; skipping survivor-db-url secret creation."; \
 		echo "INFO: Example: DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-create-db-secret"; \
+		echo "INFO: Or run after Terraform apply: make cloud-dev-create-db-secret-from-tf"; \
 		if [ "$(CLOUD_DEV_STRICT)" = "true" ]; then \
-			echo "ERROR: CLOUD_DEV_STRICT=true, failing because DATABASE_URL is missing."; \
+			echo "ERROR: CLOUD_DEV_STRICT=true, failing because no database URL source is available."; \
 			exit 1; \
 		fi; \
 	fi
+
+cloud-dev-create-db-secret-from-tf:
+	@echo "\nINFO: Creating Kubernetes DB secret from Terraform output database_connection_string..."
+	@set -e; \
+	DB_URL="$$(cd $(TF_DEV_DIR) && terraform output -raw database_connection_string)"; \
+	if [ -z "$$DB_URL" ]; then \
+		echo "ERROR: Terraform output database_connection_string is empty."; \
+		exit 1; \
+	fi; \
+	kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
+	kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
+		--from-literal=DATABASE_URL="$$DB_URL" \
+		--dry-run=client -o yaml | kubectl apply -f -; \
+	echo "SUCCESS: Secret survivor-db-url created/updated from Terraform output in namespace $(DEV_NAMESPACE)."
 
 cloud-dev-create-secrets:
 	@echo "\nINFO: Creating Kubernetes DB secret for cloud-dev..."
@@ -767,6 +859,95 @@ cloud-dev-create-secrets:
 			--dry-run=client -o yaml | kubectl apply -f -; \
 		echo "SUCCESS: Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
 	fi
+
+cloud-dev-dns-info:
+	@echo "\nINFO: Cloud-dev DNS plan for $(CLOUD_DEV_DOMAIN)"
+	@echo "INFO: Ingress LoadBalancer service:"
+	@kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o wide || true
+	@echo "\nINFO: Create A records in rescuenet.co.za DNS pointing to the ingress external IP:"
+	@echo "  chat.$(CLOUD_DEV_DOMAIN)         -> chatbot-ui"
+	@echo "  api.$(CLOUD_DEV_DOMAIN)          -> chatbot-service"
+	@echo "  admin.$(CLOUD_DEV_DOMAIN)        -> admin-ui"
+	@echo "  admin-api.$(CLOUD_DEV_DOMAIN)    -> admin-service"
+	@echo "  graph.$(CLOUD_DEV_DOMAIN)        -> graph-core"
+	@echo "  incidents.$(CLOUD_DEV_DOMAIN)    -> incident-service"
+	@echo "  participants.$(CLOUD_DEV_DOMAIN) -> participant-service"
+	@echo "\nINFO: Test before DNS propagation with: curl -H 'Host: api.$(CLOUD_DEV_DOMAIN)' http://<INGRESS_IP>/health"
+
+cloud-dev-tls-apply-staging-issuer:
+	@echo "\nINFO: Applying Let's Encrypt staging ClusterIssuer..."
+	@echo "WARN: Confirm platform/bootstrap/cert-manager/clusterissuer-letsencrypt-staging.yaml has the right monitored email first."
+	kubectl apply -f platform/bootstrap/cert-manager/clusterissuer-letsencrypt-staging.yaml
+	@echo "SUCCESS: Staging ClusterIssuer applied."
+
+cloud-dev-tls-apply-prod-issuer:
+	@echo "\nWARN: Production Let's Encrypt issuer is not applied automatically."
+	@if [ "$(CONFIRM_PROD_TLS)" != "true" ]; then \
+		echo "ERROR: Set CONFIRM_PROD_TLS=true only after DNS and staging certificates are verified."; \
+		exit 1; \
+	fi
+	kubectl apply -f platform/bootstrap/cert-manager/clusterissuer-letsencrypt-prod.yaml
+	@echo "SUCCESS: Production ClusterIssuer applied."
+
+cloud-dev-tls-verify:
+	@echo "\nINFO: Inspecting cert-manager TLS state..."
+	kubectl get clusterissuer || true
+	kubectl describe clusterissuer letsencrypt-staging || true
+	kubectl get certificate -A || true
+	kubectl describe certificate -A || true
+	kubectl describe challenge -A || true
+
+cloud-dev-secret-create-db-url:
+	@echo "\nINFO: Ensuring Secret Manager secret $(GCP_SECRET_DB_URL) exists..."
+	@set -e; \
+	if gcloud secrets describe $(GCP_SECRET_DB_URL) --project $(GCP_PROJECT) >/dev/null 2>&1; then \
+		echo "SUCCESS: Secret Manager secret $(GCP_SECRET_DB_URL) already exists."; \
+	else \
+		gcloud secrets create $(GCP_SECRET_DB_URL) --project $(GCP_PROJECT) --replication-policy=automatic; \
+		echo "SUCCESS: Secret Manager secret $(GCP_SECRET_DB_URL) created."; \
+	fi
+
+cloud-dev-secret-put-db-url:
+	@echo "\nINFO: Adding a new Secret Manager version for $(GCP_SECRET_DB_URL)..."
+	@set -e; \
+	if [ -z "$$DATABASE_URL" ]; then \
+		echo "ERROR: DATABASE_URL is required but will not be printed."; \
+		echo "INFO: Example: DATABASE_URL='postgresql+psycopg2://...' make cloud-dev-secret-put-db-url"; \
+		exit 1; \
+	fi; \
+	gcloud secrets describe $(GCP_SECRET_DB_URL) --project $(GCP_PROJECT) >/dev/null 2>&1 || \
+		gcloud secrets create $(GCP_SECRET_DB_URL) --project $(GCP_PROJECT) --replication-policy=automatic; \
+	printf "%s" "$$DATABASE_URL" | gcloud secrets versions add $(GCP_SECRET_DB_URL) --project $(GCP_PROJECT) --data-file=- >/dev/null; \
+	echo "SUCCESS: Added new Secret Manager version for $(GCP_SECRET_DB_URL)."
+
+cloud-dev-secret-describe-db-url:
+	@echo "\nINFO: Describing Secret Manager secret $(GCP_SECRET_DB_URL) without reading secret data..."
+	gcloud secrets describe $(GCP_SECRET_DB_URL) --project $(GCP_PROJECT)
+
+cloud-dev-external-secrets-apply:
+	@echo "\nINFO: Applying External Secrets manifests for GCP Secret Manager..."
+	@echo "WARN: Workload Identity and roles/secretmanager.secretAccessor must be configured first."
+	kubectl apply -f platform/bootstrap/external-secrets/clustersecretstore-gcp-secret-manager.yaml
+	kubectl apply -f platform/bootstrap/external-secrets/externalsecret-survivor-db-url.yaml
+	@echo "SUCCESS: External Secrets manifests applied."
+
+cloud-dev-external-secrets-verify:
+	@echo "\nINFO: Inspecting External Secrets status..."
+	kubectl -n $(EXTERNAL_SECRETS_NAMESPACE) get pods || true
+	kubectl get clustersecretstore gcp-secret-manager || true
+	kubectl -n $(DEV_NAMESPACE) get externalsecret survivor-db-url || true
+	kubectl -n $(DEV_NAMESPACE) describe externalsecret survivor-db-url || true
+	kubectl -n $(DEV_NAMESPACE) get secret survivor-db-url || true
+
+cloud-dev-sql-info:
+	@echo "\nINFO: Cloud SQL dev connectivity state"
+	@echo "INFO: Instance: $(CLOUD_SQL_INSTANCE)"
+	@echo "INFO: Connection name: $(CLOUD_SQL_CONNECTION_NAME)"
+	@echo "INFO: Current working fallback uses public IP plus authorized GKE node networks."
+	@echo "INFO: Near-term hardening path is Cloud SQL Auth Proxy sidecars with Workload Identity."
+	@echo "INFO: Required IAM for Auth Proxy: roles/cloudsql.client"
+	@gcloud sql instances describe $(CLOUD_SQL_INSTANCE) --project $(GCP_PROJECT) --format='table(name,connectionName,ipAddresses.ipAddress,ipAddresses.type)' || true
+	@echo "\nINFO: When Auth Proxy is enabled, DATABASE_URL should point at 127.0.0.1:5432 and still come from Kubernetes Secret or External Secret."
 
 helm-template-dev:
 	helm template survivor-network $(HELM_CHART) -f $(HELM_CHART)/values-dev.yaml --namespace $(DEV_NAMESPACE)

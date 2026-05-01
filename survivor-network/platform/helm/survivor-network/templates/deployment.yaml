@@ -1,5 +1,9 @@
 {{- range $key, $svc := .Values.services }}
 {{- if $svc.enabled }}
+{{- $cloudSqlProxyEnabled := false }}
+{{- if $svc.cloudSqlAuthProxy }}
+{{- $cloudSqlProxyEnabled = $svc.cloudSqlAuthProxy.enabled | default false }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -11,6 +15,17 @@ metadata:
     {{- include "survivor-network.labels" $ | nindent 4 }}
 spec:
   replicas: {{ $svc.replicas | default 1 }}
+  {{- $strategy := $svc.deploymentStrategy | default $.Values.global.deploymentStrategy }}
+  {{- if $strategy }}
+  strategy:
+    type: {{ $strategy.type | default "RollingUpdate" }}
+    {{- if eq ($strategy.type | default "RollingUpdate") "RollingUpdate" }}
+    {{- $rollingUpdate := $strategy.rollingUpdate | default dict }}
+    rollingUpdate:
+      maxSurge: {{ if hasKey $rollingUpdate "maxSurge" }}{{ index $rollingUpdate "maxSurge" }}{{ else }}25%{{ end }}
+      maxUnavailable: {{ if hasKey $rollingUpdate "maxUnavailable" }}{{ index $rollingUpdate "maxUnavailable" }}{{ else }}25%{{ end }}
+    {{- end }}
+  {{- end }}
   selector:
     matchLabels:
       app: {{ $svc.name }}
@@ -69,5 +84,21 @@ spec:
           resources:
             {{- toYaml $svc.resources | nindent 12 }}
           {{- end }}
+        {{- if and $.Values.global.cloudSql.authProxy.enabled $cloudSqlProxyEnabled }}
+        - name: cloud-sql-auth-proxy
+          image: {{ $.Values.global.cloudSql.authProxy.image }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--structured-logs"
+            - "--port={{ $.Values.global.cloudSql.authProxy.port | default 5432 }}"
+            - {{ required "global.cloudSql.authProxy.instanceConnectionName is required when Cloud SQL Auth Proxy is enabled" $.Values.global.cloudSql.authProxy.instanceConnectionName | quote }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          {{- if $.Values.global.cloudSql.authProxy.resources }}
+          resources:
+            {{- toYaml $.Values.global.cloudSql.authProxy.resources | nindent 12 }}
+          {{- end }}
+        {{- end }}
 {{- end }}
 {{- end }}

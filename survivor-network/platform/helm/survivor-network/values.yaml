@@ -5,11 +5,29 @@ global:
   imagePullPolicy: IfNotPresent
   domain: ""
   terminationGracePeriodSeconds: 30
+  deploymentStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
   ingress:
     tls:
       enabled: false
       clusterIssuer: ""
       secretNameSuffix: tls
+  cloudSql:
+    authProxy:
+      enabled: false
+      image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.4
+      instanceConnectionName: ""
+      port: 5432
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          cpu: "250m"
+          memory: "256Mi"
 
 initDb:
   enabled: true
@@ -53,6 +71,8 @@ services:
     ingress:
       enabled: true
       host: chatbot-service.127.0.0.1.nip.io
+    cloudSqlAuthProxy:
+      enabled: false
 
   adminService:
     enabled: true
@@ -116,6 +136,8 @@ services:
     ingress:
       enabled: true
       host: incident-service.127.0.0.1.nip.io
+    cloudSqlAuthProxy:
+      enabled: false
 
   participantService:
     enabled: true
@@ -146,6 +168,8 @@ services:
     ingress:
       enabled: true
       host: participant-service.127.0.0.1.nip.io
+    cloudSqlAuthProxy:
+      enabled: false
 
   graphCore:
     enabled: true
@@ -177,6 +201,8 @@ services:
     ingress:
       enabled: true
       host: graph-core.127.0.0.1.nip.io
+    cloudSqlAuthProxy:
+      enabled: false
 
   agentService:
     enabled: true

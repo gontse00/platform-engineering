@@ -4,8 +4,8 @@ metadata:
   name: letsencrypt-staging
 spec:
   acme:
-    # TODO: Replace with a monitored team email before applying.
-    email: change-me@example.com
+    # TODO: Confirm this monitored RescueNet team email before applying.
+    email: admin@rescuenet.co.za
     server: https://acme-staging-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-staging-account-key

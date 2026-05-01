@@ -95,6 +95,45 @@ make helm-template-local
 
 ## Runtime Quality Checks
 
+## Domain Availability Check
+
+Use the standalone Python script to check candidate South African domain names through WHOIS. It prefers the official `.ZA` Registry WHOIS server, `whois.registry.net.za`, for `.co.za`, `.org.za`, `.net.za`, and `.web.za` domains, then falls back to the local `whois` CLI if direct WHOIS fails and the CLI is installed.
+
+Run the default list:
+
+```bash
+python3 check_domains.py
+```
+
+The default list is defined near the top of [check_domains.py](check_domains.py) and can be edited directly. The script prints a table and writes:
+
+```text
+domain_availability_report.csv
+```
+
+Use a custom newline-delimited file:
+
+```bash
+python3 check_domains.py --domains-file domains.txt
+```
+
+Example `domains.txt`:
+
+```text
+# comments and blank lines are ignored
+rescuenet.co.za
+rescue-net.co.za
+rescuenet.org.za
+```
+
+Optional flags:
+
+```bash
+python3 check_domains.py --timeout 15 --delay 2 --output my_report.csv
+```
+
+The report includes domain, status, registrar, creation date, expiry date, and a raw WHOIS snippet or error reason. If WHOIS output is ambiguous, rate-limited, or unavailable, the script marks the domain as `unknown` rather than guessing. The script only checks availability; it never buys or registers domains.
+
 ### Reset test data
 
 ```bash

@@ -4,6 +4,8 @@ This document describes the hardened GKE bootstrap and deployment flow for the S
 
 The current cloud-dev architecture is intentionally preserved: Terraform creates GCP infrastructure, Makefile bootstrap prepares the Kubernetes platform, Docker Buildx publishes images, Helm deploys the app chart, and in-cluster smoke tests verify service health.
 
+For the staged real-domain, TLS, GCP Secret Manager, External Secrets, and Cloud SQL hardening path, see [Cloud Dev DNS, TLS, Secrets, and SQL Hardening](cloud-dev-dns-tls-secrets-sql.md).
+
 ## Recommended Flow
 
 Use the saved Terraform plan workflow, then run the canonical platform bootstrap target:
@@ -90,6 +92,17 @@ make cloud-dev-verify-images
 
 `cloud-dev-build-push` uses `docker buildx build --platform linux/amd64 --push` for each service and preserves the existing image names and `dev` tag.
 
+## Cloud Dev Rolling Updates
+
+The cloud-dev node pool is intentionally small, so deployments use a no-surge rolling update strategy:
+
+```yaml
+maxSurge: 0
+maxUnavailable: 1
+```
+
+This avoids rollouts getting stuck with Pending replacement pods when a service such as `graph-core` requests enough CPU that the cluster cannot temporarily schedule two copies. The tradeoff is that single-replica services can briefly go unavailable during rollout unless the node pool is scaled up.
+
 ## Cloud SQL Connectivity
 
 The current dev path uses Cloud SQL public IP plus authorized networks. After a cluster recreate, GKE node external/NAT IPs can change. If they are not authorized, DB-backed services can time out on startup:
@@ -117,13 +130,25 @@ In either case, use Workload Identity for pod-to-GCP authentication. Database ac
 
 The Helm cloud values expect a Kubernetes Secret named `survivor-db-url` in namespace `survivor-apps`.
 
-Create or update it with:
+After Terraform apply, create or update it from the sensitive Terraform output `database_connection_string`:
+
+```bash
+make cloud-dev-create-db-secret
+```
+
+For an explicit Terraform-output-only path:
+
+```bash
+make cloud-dev-create-db-secret-from-tf
+```
+
+You can still override the source manually with:
 
 ```bash
 DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-create-db-secret
 ```
 
-The target uses strict shell behavior so Kubernetes failures stop the recipe and success is printed only after `kubectl apply` succeeds. If `DATABASE_URL` is missing, bootstrap warns and continues by default. To make that fatal:
+The target uses strict shell behavior so Kubernetes failures stop the recipe and success is printed only after `kubectl apply` succeeds. It does not print the database URL. If both `DATABASE_URL` and Terraform output are missing, bootstrap warns and continues by default. To make that fatal:
 
 ```bash
 CLOUD_DEV_STRICT=true make cloud-dev-platform-ready
@@ -284,15 +309,32 @@ make cloud-dev-destroy-safe
 `cloud-dev-pre-destroy` runs:
 
 ```text
-cloud-dev-kubeconfig
+cloud-dev-kubeconfig-if-present
 cloud-dev-shutdown-apps
 cloud-dev-drain-db
+cloud-dev-clean-db-owned
 cloud-dev-uninstall-apps
 ```
 
 `cloud-dev-shutdown-apps` scales all deployments in `survivor-apps` to zero and waits for pods to terminate. Scaling to zero lets app processes exit and release PostgreSQL connections before Cloud SQL destruction.
 
 `cloud-dev-drain-db` is Kubernetes-focused for now. It verifies that no application pods remain and prints current services/endpoints for diagnostics. It does not run SQL queries.
+
+`cloud-dev-kubeconfig-if-present` refreshes kubeconfig when the cluster still exists. If Terraform already deleted GKE during a partial destroy, it warns and lets DB cleanup continue.
+
+`cloud-dev-clean-db-owned` removes database objects owned by the app role before Terraform deletes the Cloud SQL user. This is required because PostgreSQL refuses to drop a role while objects still depend on it:
+
+```text
+role "survivor" cannot be dropped because some objects depend on it
+```
+
+The target reads `DATABASE_URL` from the environment, the `survivor-db-url` Kubernetes Secret, or Terraform output. If Kubernetes is available, it starts a temporary `postgres:16-alpine` pod. If GKE has already been deleted, it falls back to local Docker or local `psql`. It normalizes `postgresql+psycopg2://` to `postgresql://` for `psql` and runs:
+
+```sql
+DROP OWNED BY "survivor" CASCADE;
+```
+
+This is destructive and should only be used as part of the cloud-dev destroy flow after applications are scaled to zero.
 
 `cloud-dev-uninstall-apps` removes the Helm release if it exists and verifies application deployments, services, and ingresses are gone. It tolerates repeated runs when the release is already absent.
 
@@ -364,8 +406,35 @@ Stuck pre-destroy or destroy:
 ```bash
 make cloud-dev-shutdown-apps
 make cloud-dev-drain-db
+make cloud-dev-clean-db-owned
 kubectl -n survivor-apps get pods -o wide
 kubectl -n survivor-apps get events --sort-by=.lastTimestamp
 ```
 
 If pods remain after the shutdown timeout, inspect the remaining pod events and logs before running Terraform destroy. Avoid force-deleting pods unless you have confirmed there are no important in-flight writes.
+
+Cloud SQL user deletion fails with dependent objects:
+
+```bash
+make cloud-dev-shutdown-apps
+make cloud-dev-drain-db
+make cloud-dev-clean-db-owned
+make cloud-dev-plan-destroy
+make cloud-dev-destroy
+```
+
+If GKE was already deleted during a partial destroy, run:
+
+```bash
+make cloud-dev-clean-db-owned
+make cloud-dev-plan-destroy
+make cloud-dev-destroy
+```
+
+In that state, `cloud-dev-clean-db-owned` uses Terraform output for the database connection string and runs through local Docker or local `psql`.
+
+If the Kubernetes Secret was already removed, pass the database URL explicitly:
+
+```bash
+DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-clean-db-owned
+```

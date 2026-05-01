@@ -4,12 +4,21 @@
 global:
   imageRegistry: "europe-west2-docker.pkg.dev/survivor-rescue-net-dev/survivor-network"
   imagePullPolicy: Always
-  domain: "survivor-dev.example.com"
+  domain: "dev.rescuenet.co.za"
+  deploymentStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   ingress:
     tls:
       enabled: false
-      clusterIssuer: ""
+      clusterIssuer: "letsencrypt-staging"
       secretNameSuffix: tls
+  cloudSql:
+    authProxy:
+      enabled: false
+      instanceConnectionName: "survivor-rescue-net-dev:europe-west2:survivor-network-dev-db"
 
 initDb:
   enabled: false
@@ -31,7 +40,9 @@ services:
     ingress:
       enabled: true
       host: null
-      subdomain: chatbot
+      subdomain: api
+    cloudSqlAuthProxy:
+      enabled: true
 
   adminService:
     image:
@@ -59,6 +70,8 @@ services:
       enabled: true
       host: null
       subdomain: incidents
+    cloudSqlAuthProxy:
+      enabled: true
 
   participantService:
     image:
@@ -71,6 +84,8 @@ services:
       enabled: true
       host: null
       subdomain: participants
+    cloudSqlAuthProxy:
+      enabled: true
 
   graphCore:
     image:
@@ -85,6 +100,8 @@ services:
       enabled: true
       host: null
       subdomain: graph
+    cloudSqlAuthProxy:
+      enabled: true
 
   agentService:
     image:
@@ -108,4 +125,4 @@ services:
     ingress:
       enabled: true
       host: null
-      subdomain: dashboard
+      subdomain: admin

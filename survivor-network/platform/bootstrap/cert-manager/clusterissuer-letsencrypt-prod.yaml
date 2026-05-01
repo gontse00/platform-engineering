@@ -4,10 +4,10 @@ metadata:
   name: letsencrypt-prod
 spec:
   acme:
-    # TODO: Replace with a monitored team email before applying.
+    # TODO: Confirm this monitored RescueNet team email before applying.
     # Do not apply this production issuer until DNS and ingress are verified
     # with the staging issuer.
-    email: change-me@example.com
+    email: admin@rescuenet.co.za
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-prod-account-key

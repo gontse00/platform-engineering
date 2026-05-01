@@ -4,6 +4,10 @@
 {{- if and (not $host) $.Values.global.domain }}
 {{- $host = printf "%s.%s" ($svc.ingress.subdomain | default $svc.name) $.Values.global.domain }}
 {{- end }}
+{{- $tlsHosts := list $host }}
+{{- if and $svc.ingress.tls $svc.ingress.tls.hosts }}
+{{- $tlsHosts = $svc.ingress.tls.hosts }}
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -23,7 +27,9 @@ spec:
   {{- if $.Values.global.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ $host }}
+        {{- range $tlsHosts }}
+        - {{ . }}
+        {{- end }}
       secretName: {{ $svc.name }}-{{ $.Values.global.ingress.tls.secretNameSuffix | default "tls" }}
   {{- end }}
   rules:
