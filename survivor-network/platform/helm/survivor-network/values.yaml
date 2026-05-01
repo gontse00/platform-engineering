@@ -3,6 +3,7 @@ global:
   namespace: survivor-apps
   imageRegistry: ""
   imagePullPolicy: IfNotPresent
+  terminationGracePeriodSeconds: 30
 
 initDb:
   enabled: true

@@ -19,6 +19,8 @@ GKE_CLUSTER        ?= survivor-network-dev
 AR_REPO            ?= survivor-network
 IMAGE_TAG          ?= dev
 REGISTRY           ?= $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(AR_REPO)
+DOCKER_PLATFORM    ?= linux/amd64
+BUILDX_BUILDER     ?= survivor-builder
 CLOUD_SQL_INSTANCE ?= survivor-network-dev-db
 DEV_NAMESPACE      ?= survivor-apps
 TF_DEV_DIR         := infra/cloud/dev
@@ -26,12 +28,16 @@ TF_APPLY_PLAN      := tfplan
 TF_DESTROY_PLAN    := destroy.tfplan
 CLOUD_DEV_STRICT   ?= false
 CLOUD_DEV_NAMESPACES := survivor-apps ingress-nginx cert-manager external-secrets observability
+SMOKE_DEV_SERVICES ?= chatbot-service graph-core incident-service participant-service admin-service agent-service
+SMOKE_CURL_IMAGE   ?= curlimages/curl
+CLOUD_DEV_SHUTDOWN_TIMEOUT ?= 180s
 
 # Bootstrap Helm configuration
 INGRESS_NGINX_NAMESPACE ?= ingress-nginx
 INGRESS_NGINX_RELEASE   ?= ingress-nginx
 INGRESS_NGINX_CHART     ?= ingress-nginx/ingress-nginx
 INGRESS_NGINX_TIMEOUT   ?= 10m
+INGRESS_NGINX_LB_WAIT_SECONDS ?= 600
 INGRESS_NGINX_CPU_REQUEST    ?= 100m
 INGRESS_NGINX_MEMORY_REQUEST ?= 128Mi
 INGRESS_NGINX_CPU_LIMIT      ?= 500m
@@ -67,11 +73,12 @@ DIR_admin-service       := ./admin-service
         status health smoke-local local-test local-sim local-sim-full local-sim-100 \
         helm-lint-local helm-template-local logs restart clean \
         cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-plan-destroy cloud-dev-destroy \
-        cloud-dev-bootstrap cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress \
+        cloud-dev-pre-destroy cloud-dev-shutdown-apps cloud-dev-uninstall-apps cloud-dev-drain-db cloud-dev-destroy-safe \
+        cloud-dev-bootstrap cloud-dev-platform-ready cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress \
         cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret \
-        cloud-dev-bootstrap-verify cloud-dev-full-recreate \
+        cloud-dev-bootstrap-verify cloud-dev-buildx-bootstrap cloud-dev-verify-images cloud-dev-restart-apps cloud-dev-full-recreate \
         deploy-dev kubeconfig-dev cloud-dev-build-push cloud-dev-authorize-sql cloud-dev-create-secrets \
-        helm-template-dev smoke-dev-internal cloud-dev-recreate \
+        helm-template-dev smoke-dev-internal smoke-dev-internal-verbose cloud-dev-recreate \
         terraform-state-bucket-create terraform-state-enable-versioning terraform-state-migrate \
         chatbot graph chatbot-ui admin-ui agent incident participant admin-svc
 
@@ -119,16 +126,23 @@ help:
 	@echo "  make cloud-dev-apply    — apply saved tfplan"
 	@echo "  make cloud-dev-plan-destroy — plan destroy + save"
 	@echo "  make cloud-dev-destroy  — apply saved destroy plan"
+	@echo "  make cloud-dev-pre-destroy — gracefully stop apps before destroy"
+	@echo "  make cloud-dev-destroy-safe — pre-destroy + plan destroy + destroy"
 	@echo "  make cloud-dev-bootstrap — bootstrap GKE add-ons and app prerequisites"
+	@echo "  make cloud-dev-platform-ready — canonical post-Terraform cluster bootstrap"
 	@echo "  make cloud-dev-kubeconfig — get GKE credentials"
 	@echo "  make kubeconfig-dev     — compatibility alias for cloud-dev-kubeconfig"
+	@echo "  make cloud-dev-buildx-bootstrap — create/use Docker Buildx builder"
 	@echo "  make cloud-dev-build-push — build + push all images"
+	@echo "  make cloud-dev-verify-images — list and inspect Artifact Registry images"
+	@echo "  make cloud-dev-restart-apps — restart app deployments and watch pods"
 	@echo "  make cloud-dev-authorize-sql — authorize GKE→Cloud SQL"
 	@echo "  make cloud-dev-create-db-secret — create DB secret from DATABASE_URL"
 	@echo "  make cloud-dev-create-secrets — legacy interactive DB secret fallback"
 	@echo "  make helm-template-dev  — render dev Helm templates"
 	@echo "  make deploy-dev         — helm deploy to cloud dev"
 	@echo "  make smoke-dev-internal — health check pods internally"
+	@echo "  make smoke-dev-internal-verbose — verbose internal health checks"
 	@echo "  make cloud-dev-full-recreate — plan/apply/bootstrap/build/deploy/smoke"
 	@echo "  make cloud-dev-recreate — full teardown + recreate"
 
@@ -426,24 +440,119 @@ cloud-dev-destroy:
 	cd $(TF_DEV_DIR) && terraform apply $(TF_DESTROY_PLAN)
 	@echo "✅ Infrastructure destroyed."
 
-cloud-dev-bootstrap: cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret cloud-dev-bootstrap-verify
-	@echo "\n✅ Cloud dev bootstrap complete."
+cloud-dev-pre-destroy: cloud-dev-kubeconfig cloud-dev-shutdown-apps cloud-dev-drain-db cloud-dev-uninstall-apps
+	@echo "\nSUCCESS: Cloud dev pre-destroy shutdown complete."
+
+cloud-dev-shutdown-apps:
+	@echo "\nINFO: Scaling application deployments in $(DEV_NAMESPACE) to zero..."
+	@set -e; \
+	if ! kubectl get namespace $(DEV_NAMESPACE) >/dev/null 2>&1; then \
+		echo "WARN: Namespace $(DEV_NAMESPACE) does not exist; no app deployments to shut down."; \
+		exit 0; \
+	fi; \
+	if ! kubectl -n $(DEV_NAMESPACE) get deploy >/dev/null 2>&1; then \
+		echo "WARN: Could not list deployments in $(DEV_NAMESPACE)."; \
+		exit 1; \
+	fi; \
+	if [ -z "$$(kubectl -n $(DEV_NAMESPACE) get deploy -o name)" ]; then \
+		echo "INFO: No deployments found in $(DEV_NAMESPACE)."; \
+	else \
+		kubectl -n $(DEV_NAMESPACE) scale deploy --all --replicas=0; \
+	fi; \
+	echo "INFO: Waiting for application pods to terminate..."; \
+	if [ -z "$$(kubectl -n $(DEV_NAMESPACE) get pods -o name)" ]; then \
+		echo "SUCCESS: No application pods remain in $(DEV_NAMESPACE)."; \
+	elif kubectl -n $(DEV_NAMESPACE) wait --for=delete pod --all --timeout=$(CLOUD_DEV_SHUTDOWN_TIMEOUT); then \
+		echo "SUCCESS: Application pods terminated."; \
+	else \
+		echo "ERROR: Timed out waiting for application pods to terminate."; \
+		echo "INFO: Remaining pods:"; \
+		kubectl -n $(DEV_NAMESPACE) get pods -o wide || true; \
+		echo "INFO: Recent namespace events:"; \
+		kubectl -n $(DEV_NAMESPACE) get events --sort-by=.lastTimestamp | tail -n 30 || true; \
+		exit 1; \
+	fi
+
+cloud-dev-uninstall-apps:
+	@echo "\nINFO: Uninstalling Helm release survivor-network from $(DEV_NAMESPACE)..."
+	@set -e; \
+	if helm status survivor-network -n $(DEV_NAMESPACE) >/dev/null 2>&1; then \
+		helm uninstall survivor-network -n $(DEV_NAMESPACE); \
+		echo "SUCCESS: Helm release survivor-network uninstalled."; \
+	else \
+		echo "WARN: Helm release survivor-network is not installed in $(DEV_NAMESPACE); skipping uninstall."; \
+	fi; \
+	echo "INFO: Verifying application Kubernetes resources are removed..."; \
+	if kubectl get namespace $(DEV_NAMESPACE) >/dev/null 2>&1; then \
+		kubectl -n $(DEV_NAMESPACE) get deploy,svc,ingress || true; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get deploy -o name 2>/dev/null)" ]; then \
+			echo "ERROR: Deployments still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get deploy -o wide || true; \
+			exit 1; \
+		fi; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get svc -o name 2>/dev/null)" ]; then \
+			echo "ERROR: Services still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get svc -o wide || true; \
+			exit 1; \
+		fi; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get ingress -o name 2>/dev/null)" ]; then \
+			echo "ERROR: Ingress resources still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get ingress -o wide || true; \
+			exit 1; \
+		fi; \
+		echo "SUCCESS: Application deployments, services, and ingresses are removed."; \
+	else \
+		echo "SUCCESS: Namespace $(DEV_NAMESPACE) is already absent."; \
+	fi
+
+cloud-dev-drain-db:
+	@echo "\nINFO: Verifying Kubernetes app workloads have drained DB connections..."
+	@set -e; \
+	if ! kubectl get namespace $(DEV_NAMESPACE) >/dev/null 2>&1; then \
+		echo "SUCCESS: Namespace $(DEV_NAMESPACE) does not exist; no app pods remain."; \
+		exit 0; \
+	fi; \
+	echo "INFO: Current pod status:"; \
+	kubectl -n $(DEV_NAMESPACE) get pods -o wide || true; \
+	if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get pods -o name 2>/dev/null)" ]; then \
+		echo "ERROR: Application pods still exist in $(DEV_NAMESPACE); DB connections may still be active."; \
+		echo "INFO: Run make cloud-dev-shutdown-apps again, then inspect remaining pods."; \
+		exit 1; \
+	fi; \
+	echo "INFO: Remaining services/endpoints:"; \
+	kubectl -n $(DEV_NAMESPACE) get svc,endpoints || true; \
+	echo "SUCCESS: No application pods remain in $(DEV_NAMESPACE)."
+
+cloud-dev-destroy-safe:
+	@echo "\nINFO: Running safe cloud-dev destroy workflow..."
+	$(MAKE) cloud-dev-pre-destroy
+	$(MAKE) cloud-dev-plan-destroy
+	$(MAKE) cloud-dev-destroy
+	@echo "\nSUCCESS: Safe cloud-dev destroy complete."
+
+cloud-dev-bootstrap: cloud-dev-platform-ready
+	@echo "\nSUCCESS: Cloud dev bootstrap complete."
+
+cloud-dev-platform-ready: cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-authorize-sql cloud-dev-create-db-secret cloud-dev-bootstrap-verify
+	@echo "\nSUCCESS: Cloud dev platform is ready."
 
 cloud-dev-kubeconfig:
+	@echo "\nINFO: Refreshing kubeconfig for $(GKE_CLUSTER) in $(GCP_ZONE)..."
 	gcloud container clusters get-credentials $(GKE_CLUSTER) --zone $(GCP_ZONE) --project $(GCP_PROJECT)
+	@echo "SUCCESS: kubeconfig refreshed."
 
 kubeconfig-dev: cloud-dev-kubeconfig
 
 cloud-dev-create-namespaces:
-	@echo "\n📦 Creating cloud-dev namespaces..."
+	@echo "\nINFO: Creating cloud-dev namespaces..."
 	@for ns in $(CLOUD_DEV_NAMESPACES); do \
-		echo "  Ensuring namespace $$ns..."; \
+		echo "INFO: Ensuring namespace $$ns..."; \
 		kubectl create namespace $$ns --dry-run=client -o yaml | kubectl apply -f -; \
 	done
-	@echo "✅ Namespaces ready."
+	@echo "SUCCESS: Namespaces ready."
 
 cloud-dev-install-ingress:
-	@echo "\n🌐 Installing ingress-nginx..."
+	@echo "\nINFO: Installing ingress-nginx..."
 	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
 	helm repo update
 	helm upgrade --install $(INGRESS_NGINX_RELEASE) $(INGRESS_NGINX_CHART) \
@@ -458,10 +567,48 @@ cloud-dev-install-ingress:
 		$(INGRESS_NGINX_EXTRA_SET) \
 		--wait \
 		--timeout $(INGRESS_NGINX_TIMEOUT)
-	@echo "✅ ingress-nginx ready."
+	@echo "INFO: Verifying ingress-nginx controller rollout..."
+	kubectl -n $(INGRESS_NGINX_NAMESPACE) rollout status deploy/$(INGRESS_NGINX_RELEASE)-controller --timeout=$(INGRESS_NGINX_TIMEOUT)
+	kubectl -n $(INGRESS_NGINX_NAMESPACE) wait pod \
+		-l app.kubernetes.io/name=ingress-nginx,app.kubernetes.io/component=controller \
+		--for=condition=Ready \
+		--timeout=$(INGRESS_NGINX_TIMEOUT)
+	@echo "INFO: Verifying ingress-nginx LoadBalancer service..."
+	@set -e; \
+	if ! kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller >/dev/null 2>&1; then \
+		echo "ERROR: ingress-nginx controller service is missing."; \
+		kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc -o wide || true; \
+		exit 1; \
+	fi; \
+	if [ "$$(kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o jsonpath='{.spec.type}')" != "LoadBalancer" ]; then \
+		echo "ERROR: ingress-nginx controller service is not type LoadBalancer."; \
+		kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o wide; \
+		exit 1; \
+	fi; \
+	deadline=$$(($$(date +%s) + $(INGRESS_NGINX_LB_WAIT_SECONDS))); \
+	while true; do \
+		lb="$$(kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)"; \
+		if [ -n "$$lb" ]; then \
+			echo "SUCCESS: ingress-nginx LoadBalancer is ready: $$lb"; \
+			break; \
+		fi; \
+		if [ "$$(date +%s)" -ge "$$deadline" ]; then \
+			echo "ERROR: ingress-nginx LoadBalancer external address was not assigned within $(INGRESS_NGINX_LB_WAIT_SECONDS)s."; \
+			echo "INFO: Controller pods:"; \
+			kubectl -n $(INGRESS_NGINX_NAMESPACE) get pods -o wide || true; \
+			echo "INFO: Controller service:"; \
+			kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o wide || true; \
+			echo "INFO: Describe service for cloud provider events:"; \
+			kubectl -n $(INGRESS_NGINX_NAMESPACE) describe svc $(INGRESS_NGINX_RELEASE)-controller || true; \
+			exit 1; \
+		fi; \
+		echo "INFO: Waiting for ingress-nginx external LoadBalancer address..."; \
+		sleep 10; \
+	done
+	@echo "SUCCESS: ingress-nginx ready."
 
 cloud-dev-install-cert-manager:
-	@echo "\n🔐 Installing cert-manager..."
+	@echo "\nINFO: Installing cert-manager..."
 	helm repo add jetstack https://charts.jetstack.io || true
 	helm repo update
 	helm upgrade --install $(CERT_MANAGER_RELEASE) $(CERT_MANAGER_CHART) \
@@ -471,11 +618,11 @@ cloud-dev-install-cert-manager:
 		$(CERT_MANAGER_EXTRA_SET) \
 		--wait \
 		--timeout $(CERT_MANAGER_TIMEOUT)
-	@echo "✅ cert-manager ready."
-	@echo "   ClusterIssuer placeholders are in platform/bootstrap/cert-manager/ and are not applied automatically."
+	@echo "SUCCESS: cert-manager ready."
+	@echo "INFO: ClusterIssuer placeholders are in platform/bootstrap/cert-manager/ and are not applied automatically."
 
 cloud-dev-install-external-secrets:
-	@echo "\n🔑 Installing External Secrets Operator..."
+	@echo "\nINFO: Installing External Secrets Operator..."
 	helm repo add external-secrets https://charts.external-secrets.io || true
 	helm repo update
 	helm upgrade --install $(EXTERNAL_SECRETS_RELEASE) $(EXTERNAL_SECRETS_CHART) \
@@ -484,66 +631,97 @@ cloud-dev-install-external-secrets:
 		$(EXTERNAL_SECRETS_EXTRA_SET) \
 		--wait \
 		--timeout $(EXTERNAL_SECRETS_TIMEOUT)
-	@echo "✅ External Secrets Operator ready."
-	@echo "   Placeholder GCP Secret Manager manifests are in platform/bootstrap/external-secrets/ and are not applied automatically."
+	@echo "SUCCESS: External Secrets Operator ready."
+	@echo "INFO: Placeholder GCP Secret Manager manifests are in platform/bootstrap/external-secrets/ and are not applied automatically."
 
-cloud-dev-build-push:
-	@echo "\n🔨 Building and pushing all images to $(REGISTRY)..."
+cloud-dev-buildx-bootstrap:
+	@echo "\nINFO: Ensuring Docker Buildx builder $(BUILDX_BUILDER) exists..."
+	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || docker buildx create --name $(BUILDX_BUILDER) --use
+	@docker buildx use $(BUILDX_BUILDER)
+	@docker buildx inspect --bootstrap
+	@echo "SUCCESS: Buildx builder $(BUILDX_BUILDER) ready."
+
+cloud-dev-build-push: cloud-dev-buildx-bootstrap
+	@echo "\nINFO: Building and pushing $(DOCKER_PLATFORM) images to $(REGISTRY)..."
 	@gcloud auth configure-docker $(GCP_REGION)-docker.pkg.dev --quiet
-	@for svc in chatbot-service graph-core chatbot-ui admin-ui agent-service incident-service participant-service admin-service; do \
-		echo "  Building $$svc..."; \
-		docker build -t $(REGISTRY)/$$svc:$(IMAGE_TAG) ./$$svc 2>/dev/null || \
-		docker build -t $(REGISTRY)/$$svc:$(IMAGE_TAG) $$(echo $$svc | sed 's/graph-core/.\/graph-core\/backend/;s/chatbot-ui/.\/chatbot-ui-service/;s/admin-ui/.\/admin-ui/') && \
-		docker push $(REGISTRY)/$$svc:$(IMAGE_TAG); \
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/chatbot-service:$(IMAGE_TAG) $(DIR_chatbot-service) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/graph-core:$(IMAGE_TAG) $(DIR_graph-core) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/chatbot-ui:$(IMAGE_TAG) $(DIR_chatbot-ui) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/admin-ui:$(IMAGE_TAG) $(DIR_admin-ui) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/agent-service:$(IMAGE_TAG) $(DIR_agent-service) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/incident-service:$(IMAGE_TAG) $(DIR_incident-service) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/participant-service:$(IMAGE_TAG) $(DIR_participant-service) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/admin-service:$(IMAGE_TAG) $(DIR_admin-service) --push
+	@echo "SUCCESS: All $(DOCKER_PLATFORM) images pushed."
+
+cloud-dev-verify-images:
+	@echo "\n🔎 Listing Artifact Registry images in $(REGISTRY)..."
+	gcloud artifacts docker images list $(REGISTRY) --project $(GCP_PROJECT)
+	@echo "\n🔎 Inspecting pushed image manifests..."
+	@for svc in $(SERVICES); do \
+		echo "\n--- $(REGISTRY)/$$svc:$(IMAGE_TAG) ---"; \
+		docker buildx imagetools inspect $(REGISTRY)/$$svc:$(IMAGE_TAG); \
 	done
-	@echo "✅ All images pushed."
 
 cloud-dev-authorize-sql:
-	@echo "Authorizing GKE nodes to access Cloud SQL..."
-	@NODE_IPS=$$(gcloud compute instances list --project $(GCP_PROJECT) --format='value(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null | tr '\n' ',') && \
+	@echo "\nINFO: Authorizing current GKE node NAT IPs for Cloud SQL $(CLOUD_SQL_INSTANCE)..."
+	@set -e; \
+	NODE_IPS="$$(gcloud compute instances list \
+		--project $(GCP_PROJECT) \
+		--filter='name~^gke-$(GKE_CLUSTER)- AND status=RUNNING' \
+		--format='value(networkInterfaces[0].accessConfigs[0].natIP)' | awk 'NF { print $$1 "/32" }' | paste -sd, -)"; \
+	if [ -z "$$NODE_IPS" ]; then \
+		echo "ERROR: No external NAT IPs found for running GKE nodes in cluster $(GKE_CLUSTER)."; \
+		echo "INFO: Check GKE node instances with:"; \
+		echo "      gcloud compute instances list --project $(GCP_PROJECT) --filter='name~^gke-$(GKE_CLUSTER)-'"; \
+		exit 1; \
+	fi; \
+	echo "INFO: Authorizing networks: $$NODE_IPS"; \
 	gcloud sql instances patch $(CLOUD_SQL_INSTANCE) \
 		--project $(GCP_PROJECT) \
-		--authorized-networks=$$NODE_IPS \
-		--quiet
-	@echo "✅ Cloud SQL authorized for GKE node IPs."
+		--authorized-networks="$$NODE_IPS" \
+		--quiet; \
+	echo "SUCCESS: Cloud SQL authorized for current GKE node NAT IPs."
 
 cloud-dev-create-db-secret:
-	@echo "\n🗄️  Creating Kubernetes DB secret for cloud-dev..."
-	@if [ -n "$$DATABASE_URL" ]; then \
+	@echo "\nINFO: Creating Kubernetes DB secret for cloud-dev..."
+	@set -e; \
+	if [ -n "$$DATABASE_URL" ]; then \
 		kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
 		kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
 			--from-literal=DATABASE_URL="$$DATABASE_URL" \
 			--dry-run=client -o yaml | kubectl apply -f -; \
-		echo "✅ Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
+		echo "SUCCESS: Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
 	else \
-		echo "⚠️  DATABASE_URL is not set; skipping survivor-db-url secret creation."; \
-		echo "   Example: DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-create-db-secret"; \
+		echo "WARN: DATABASE_URL is not set; skipping survivor-db-url secret creation."; \
+		echo "INFO: Example: DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-create-db-secret"; \
 		if [ "$(CLOUD_DEV_STRICT)" = "true" ]; then \
-			echo "❌ CLOUD_DEV_STRICT=true, failing because DATABASE_URL is missing."; \
+			echo "ERROR: CLOUD_DEV_STRICT=true, failing because DATABASE_URL is missing."; \
 			exit 1; \
 		fi; \
 	fi
 
 cloud-dev-create-secrets:
-	@echo "\n🗄️  Creating Kubernetes DB secret for cloud-dev..."
-	@if [ -n "$$DATABASE_URL" ]; then \
+	@echo "\nINFO: Creating Kubernetes DB secret for cloud-dev..."
+	@set -e; \
+	if [ -n "$$DATABASE_URL" ]; then \
 		kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
 		kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
 			--from-literal=DATABASE_URL="$$DATABASE_URL" \
 			--dry-run=client -o yaml | kubectl apply -f -; \
-		echo "✅ Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
+		echo "SUCCESS: Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
 	else \
 		echo "Enter Cloud SQL DATABASE_URL (e.g., postgresql+psycopg2://survivor:PASSWORD@IP:5432/survivor):"; \
 		read -p "DATABASE_URL: " DB_URL; \
 		if [ -z "$$DB_URL" ]; then \
-			echo "❌ DATABASE_URL cannot be empty for interactive secret creation."; \
+			echo "ERROR: DATABASE_URL cannot be empty for interactive secret creation."; \
 			exit 1; \
 		fi; \
 		kubectl create namespace $(DEV_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -; \
 		kubectl --namespace $(DEV_NAMESPACE) create secret generic survivor-db-url \
 			--from-literal=DATABASE_URL="$$DB_URL" \
 			--dry-run=client -o yaml | kubectl apply -f -; \
-		echo "✅ Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
+		echo "SUCCESS: Secret survivor-db-url created/updated in namespace $(DEV_NAMESPACE)."; \
 	fi
 
 helm-template-dev:
@@ -558,59 +736,109 @@ deploy-dev:
 		--wait --timeout 5m
 
 smoke-dev-internal:
-	@echo "\n🏥 Cloud dev health checks (internal)..."
-	@for svc in chatbot-service graph-core incident-service participant-service admin-service agent-service; do \
-		kubectl --namespace $(DEV_NAMESPACE) exec deploy/$$svc -- wget -qO- http://localhost:8080/health 2>/dev/null && \
-		echo " ✅ $$svc" || echo " ❌ $$svc"; \
-	done
+	@echo "\nINFO: Running cloud dev health checks from inside the cluster..."
+	@failed=0; \
+	for svc in $(SMOKE_DEV_SERVICES); do \
+		url="http://$$svc:8080/health"; \
+		pod="curl-test-$$svc"; \
+		echo "  Checking $$url..."; \
+		kubectl -n $(DEV_NAMESPACE) delete pod $$pod --ignore-not-found --wait=false >/dev/null 2>&1 || true; \
+		if kubectl -n $(DEV_NAMESPACE) run $$pod \
+			--image=$(SMOKE_CURL_IMAGE) \
+			--rm -i \
+			--restart=Never \
+			--pod-running-timeout=90s \
+			--command -- sh -c 'curl -fsS --connect-timeout 5 --max-time 20 "$$1" >/dev/null' -- "$$url"; then \
+			echo "SUCCESS: $$svc"; \
+		else \
+			echo "ERROR: $$svc health check failed."; \
+			echo "INFO: URL: $$url"; \
+			echo "INFO: Service:"; \
+			kubectl -n $(DEV_NAMESPACE) get svc $$svc -o wide || true; \
+			echo "INFO: Pods:"; \
+			kubectl -n $(DEV_NAMESPACE) get pods -l app=$$svc -o wide || true; \
+			failed=1; \
+		fi; \
+	done; \
+	exit $$failed
+
+smoke-dev-internal-verbose:
+	@echo "\nINFO: Running verbose cloud dev health checks from inside the cluster..."
+	@failed=0; \
+	for svc in $(SMOKE_DEV_SERVICES); do \
+		url="http://$$svc:8080/health"; \
+		pod="curl-test-$$svc-verbose"; \
+		echo "\n--- $$svc ---"; \
+		echo "URL: $$url"; \
+		kubectl -n $(DEV_NAMESPACE) delete pod $$pod --ignore-not-found --wait=false >/dev/null 2>&1 || true; \
+		if kubectl -n $(DEV_NAMESPACE) run $$pod \
+			--image=$(SMOKE_CURL_IMAGE) \
+			--rm -i \
+			--restart=Never \
+			--pod-running-timeout=90s \
+			--command -- sh -c 'status=$$(curl -sS --connect-timeout 5 --max-time 20 -o /tmp/body -w "%{http_code}" "$$1"); cat /tmp/body; echo; echo "HTTP_STATUS=$$status"; [ "$$status" -ge 200 ] && [ "$$status" -lt 400 ]' -- "$$url"; then \
+			echo "SUCCESS: $$svc"; \
+		else \
+			echo "ERROR: $$svc health check failed."; \
+			echo "INFO: Service:"; \
+			kubectl -n $(DEV_NAMESPACE) get svc $$svc -o wide || true; \
+			echo "INFO: Pods:"; \
+			kubectl -n $(DEV_NAMESPACE) get pods -l app=$$svc -o wide || true; \
+			failed=1; \
+		fi; \
+	done; \
+	exit $$failed
+
+cloud-dev-restart-apps:
+	kubectl -n $(DEV_NAMESPACE) rollout restart deploy
+	kubectl -n $(DEV_NAMESPACE) get pods -w
 
 cloud-dev-bootstrap-verify:
-	@echo "\n🔎 Verifying cloud-dev bootstrap..."
+	@echo "\nINFO: Verifying cloud-dev bootstrap..."
 	kubectl get nodes
 	kubectl get ns
 	kubectl -n ingress-nginx get pods
+	kubectl -n ingress-nginx get svc $(INGRESS_NGINX_RELEASE)-controller -o wide
 	kubectl -n cert-manager get pods
 	kubectl -n external-secrets get pods
 	@if kubectl -n $(DEV_NAMESPACE) get secret survivor-db-url >/dev/null 2>&1; then \
-		echo "✅ survivor-db-url secret exists in namespace $(DEV_NAMESPACE)."; \
+		echo "SUCCESS: survivor-db-url secret exists in namespace $(DEV_NAMESPACE)."; \
 	else \
-		echo "⚠️  survivor-db-url secret is missing in namespace $(DEV_NAMESPACE)."; \
-		echo "   Set DATABASE_URL and run: make cloud-dev-create-db-secret"; \
+		echo "WARN: survivor-db-url secret is missing in namespace $(DEV_NAMESPACE)."; \
+		echo "INFO: Set DATABASE_URL and run: make cloud-dev-create-db-secret"; \
 		if [ "$(CLOUD_DEV_STRICT)" = "true" ]; then \
-			echo "❌ CLOUD_DEV_STRICT=true, failing because survivor-db-url is missing."; \
+			echo "ERROR: CLOUD_DEV_STRICT=true, failing because survivor-db-url is missing."; \
 			exit 1; \
 		fi; \
 	fi
-	@echo "✅ Bootstrap verification complete."
+	@echo "SUCCESS: Bootstrap verification complete."
 
 cloud-dev-full-recreate:
-	@echo "\n🔄 Full cloud-dev recreate without destroy..."
+	@echo "\nINFO: Full cloud-dev recreate without destroy..."
 	$(MAKE) cloud-dev-plan
 	$(MAKE) cloud-dev-apply
-	$(MAKE) cloud-dev-bootstrap
+	$(MAKE) cloud-dev-platform-ready
 	$(MAKE) cloud-dev-build-push
+	$(MAKE) cloud-dev-verify-images
 	$(MAKE) deploy-dev
 	$(MAKE) smoke-dev-internal
-	@echo "\n✅ Cloud dev full recreate complete."
+	@echo "\nSUCCESS: Cloud dev full recreate complete."
 
 cloud-dev-recreate:
-	@echo "\n🔄 Full cloud-dev recreate..."
+	@echo "\nINFO: Legacy cloud-dev recreate without destroy..."
 	@echo "  1. Terraform apply..."
 	$(MAKE) cloud-dev-plan
 	$(MAKE) cloud-dev-apply
-	@echo "  2. Get kubeconfig..."
-	$(MAKE) kubeconfig-dev
-	@echo "  3. Authorize SQL..."
-	$(MAKE) cloud-dev-authorize-sql
-	@echo "  4. Create secrets..."
-	$(MAKE) cloud-dev-create-secrets
+	@echo "  2. Platform bootstrap..."
+	$(MAKE) cloud-dev-platform-ready
 	@echo "  5. Build and push images..."
 	$(MAKE) cloud-dev-build-push
+	$(MAKE) cloud-dev-verify-images
 	@echo "  6. Deploy with Helm..."
 	$(MAKE) deploy-dev
 	@echo "  7. Smoke test..."
 	$(MAKE) smoke-dev-internal
-	@echo "\n✅ Cloud dev environment recreated."
+	@echo "\nSUCCESS: Cloud dev environment recreated."
 
 # ============================================================
 # Database Init (manual fallback if initContainer didn't run)
