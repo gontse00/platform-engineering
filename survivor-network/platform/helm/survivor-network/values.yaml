@@ -3,7 +3,13 @@ global:
   namespace: survivor-apps
   imageRegistry: ""
   imagePullPolicy: IfNotPresent
+  domain: ""
   terminationGracePeriodSeconds: 30
+  ingress:
+    tls:
+      enabled: false
+      clusterIssuer: ""
+      secretNameSuffix: tls
 
 initDb:
   enabled: true

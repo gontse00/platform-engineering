@@ -22,7 +22,7 @@ spec:
       serviceAccountName: survivor-network
       # TODO: Add explicit SIGTERM handling in FastAPI services so in-flight
       # requests and DB sessions drain cleanly during scale-down.
-      terminationGracePeriodSeconds: {{ $.Values.global.terminationGracePeriodSeconds | default 30 }}
+      terminationGracePeriodSeconds: {{ $svc.terminationGracePeriodSeconds | default $.Values.global.terminationGracePeriodSeconds | default 30 }}
       containers:
         - name: {{ $svc.name }}
           image: {{ if $.Values.global.imageRegistry }}{{ $.Values.global.imageRegistry }}/{{ end }}{{ $svc.image.repository }}:{{ $svc.image.tag }}

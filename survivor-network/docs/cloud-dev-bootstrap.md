@@ -102,6 +102,17 @@ psycopg2.OperationalError: connection to server ... port 5432 failed: Connection
 
 This keeps the current public-IP dev workflow intact. A future production hardening step should move to Cloud SQL Auth Proxy or private IP.
 
+## Future Cloud SQL Hardening
+
+The current cloud-dev setup depends on Cloud SQL public IP and authorized GKE node NAT IPs. That is acceptable for this dev environment, but it is not the desired production model because node NAT IPs can change after cluster recreation or node pool replacement.
+
+The production target should use one of:
+
+- Cloud SQL private IP with VPC-native routing
+- Cloud SQL Auth Proxy sidecars or a shared proxy pattern
+
+In either case, use Workload Identity for pod-to-GCP authentication. Database access should not depend on manually tracking or patching node NAT IPs.
+
 ## DB Secret
 
 The Helm cloud values expect a Kubernetes Secret named `survivor-db-url` in namespace `survivor-apps`.
@@ -141,6 +152,41 @@ kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
 kubectl -n ingress-nginx describe svc ingress-nginx-controller
 ```
 
+## DNS
+
+Cloud-dev ingress hosts are prepared for a configurable domain. The chart defaults preserve local `127.0.0.1.nip.io` hosts, while `values-dev.yaml` sets:
+
+```yaml
+global:
+  domain: survivor-dev.example.com
+```
+
+Service ingresses can use `ingress.subdomain`, which renders as:
+
+```text
+<subdomain>.<global.domain>
+```
+
+After `cloud-dev-install-ingress` succeeds, get the external LoadBalancer IP:
+
+```bash
+kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
+```
+
+Point DNS A records for the desired hosts to that IP, for example:
+
+```text
+chat.survivor-dev.example.com       A  <LOAD_BALANCER_IP>
+dashboard.survivor-dev.example.com  A  <LOAD_BALANCER_IP>
+admin-api.survivor-dev.example.com  A  <LOAD_BALANCER_IP>
+graph.survivor-dev.example.com      A  <LOAD_BALANCER_IP>
+incidents.survivor-dev.example.com  A  <LOAD_BALANCER_IP>
+participants.survivor-dev.example.com A <LOAD_BALANCER_IP>
+chatbot.survivor-dev.example.com    A  <LOAD_BALANCER_IP>
+```
+
+Use the actual domain when one is available. The placeholder `survivor-dev.example.com` is not expected to resolve.
+
 ## Smoke Tests
 
 Cloud smoke tests do not exec into app containers. Minimal app images may not include `wget` or `curl`, so that approach can report false failures.
@@ -176,9 +222,11 @@ platform/bootstrap/external-secrets/
 
 Before using them:
 
-- Create a GCP Secret Manager secret for `survivor-db-url`.
-- Create or choose a Google service account with `roles/secretmanager.secretAccessor`.
-- Bind Kubernetes service account `external-secrets/external-secrets` to that Google service account with Workload Identity.
+- TODO: Create a GCP Secret Manager secret named `survivor-db-url`.
+- TODO: Store the full SQLAlchemy `DATABASE_URL` as the secret value.
+- TODO: Create or choose a Google service account for External Secrets.
+- TODO: Grant that Google service account `roles/secretmanager.secretAccessor`.
+- TODO: Bind Kubernetes service account `external-secrets/external-secrets` to that Google service account with Workload Identity.
 - Review and apply `clustersecretstore-gcp-secret-manager.yaml`.
 - Review and apply `externalsecret-survivor-db-url.yaml`.
 
@@ -201,6 +249,19 @@ kubectl apply -f platform/bootstrap/cert-manager/clusterissuer-letsencrypt-stagi
 ```
 
 Do not apply the production issuer until DNS points to the ingress LoadBalancer and HTTP-01 validation works with staging.
+
+Ingress TLS values are exposed but disabled by default:
+
+```yaml
+global:
+  ingress:
+    tls:
+      enabled: false
+      clusterIssuer: ""
+      secretNameSuffix: tls
+```
+
+After DNS works, enable TLS with the staging issuer first. Only switch to the production issuer after certificates validate successfully with staging. Do not apply the production issuer automatically.
 
 ## Safe Destroy Workflow
 
@@ -234,6 +295,27 @@ cloud-dev-uninstall-apps
 `cloud-dev-drain-db` is Kubernetes-focused for now. It verifies that no application pods remain and prints current services/endpoints for diagnostics. It does not run SQL queries.
 
 `cloud-dev-uninstall-apps` removes the Helm release if it exists and verifies application deployments, services, and ingresses are gone. It tolerates repeated runs when the release is already absent.
+
+Use this manual test sequence before the first real safe destroy:
+
+```bash
+make -n cloud-dev-pre-destroy
+make cloud-dev-pre-destroy
+kubectl -n survivor-apps get pods
+kubectl -n survivor-apps get deploy
+kubectl -n survivor-apps get svc
+kubectl -n survivor-apps get ingress
+
+make -n cloud-dev-destroy-safe
+make cloud-dev-destroy-safe
+```
+
+Do not run `cloud-dev-destroy-safe` until `cloud-dev-pre-destroy` succeeds. Always review the saved destroy plan before applying it:
+
+```bash
+cd infra/cloud/dev
+terraform show destroy.tfplan
+```
 
 The Helm chart also sets a default `terminationGracePeriodSeconds` so pods have time to shut down after SIGTERM. Future app hardening should add explicit FastAPI SIGTERM handling to close in-flight requests and DB sessions cleanly.
 

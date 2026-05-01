@@ -31,6 +31,7 @@ CLOUD_DEV_NAMESPACES := survivor-apps ingress-nginx cert-manager external-secret
 SMOKE_DEV_SERVICES ?= chatbot-service graph-core incident-service participant-service admin-service agent-service
 SMOKE_CURL_IMAGE   ?= curlimages/curl
 CLOUD_DEV_SHUTDOWN_TIMEOUT ?= 180s
+APP_LABEL_SELECTOR ?= app.kubernetes.io/part-of=survivor-network
 
 # Bootstrap Helm configuration
 INGRESS_NGINX_NAMESPACE ?= ingress-nginx
@@ -73,7 +74,7 @@ DIR_admin-service       := ./admin-service
         status health smoke-local local-test local-sim local-sim-full local-sim-100 \
         helm-lint-local helm-template-local logs restart clean \
         cloud-dev-init cloud-dev-fmt cloud-dev-validate cloud-dev-plan cloud-dev-apply cloud-dev-plan-destroy cloud-dev-destroy \
-        cloud-dev-pre-destroy cloud-dev-shutdown-apps cloud-dev-uninstall-apps cloud-dev-drain-db cloud-dev-destroy-safe \
+        cloud-dev-pre-destroy cloud-dev-pre-destroy-check cloud-dev-shutdown-apps cloud-dev-uninstall-apps cloud-dev-drain-db cloud-dev-destroy-safe cloud-dev-destroy-safe-check \
         cloud-dev-bootstrap cloud-dev-platform-ready cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress \
         cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret \
         cloud-dev-bootstrap-verify cloud-dev-buildx-bootstrap cloud-dev-verify-images cloud-dev-restart-apps cloud-dev-full-recreate \
@@ -127,7 +128,9 @@ help:
 	@echo "  make cloud-dev-plan-destroy — plan destroy + save"
 	@echo "  make cloud-dev-destroy  — apply saved destroy plan"
 	@echo "  make cloud-dev-pre-destroy — gracefully stop apps before destroy"
+	@echo "  make cloud-dev-pre-destroy-check — inspect pre-destroy state without mutating"
 	@echo "  make cloud-dev-destroy-safe — pre-destroy + plan destroy + destroy"
+	@echo "  make cloud-dev-destroy-safe-check — print safe destroy flow without mutating"
 	@echo "  make cloud-dev-bootstrap — bootstrap GKE add-ons and app prerequisites"
 	@echo "  make cloud-dev-platform-ready — canonical post-Terraform cluster bootstrap"
 	@echo "  make cloud-dev-kubeconfig — get GKE credentials"
@@ -443,6 +446,25 @@ cloud-dev-destroy:
 cloud-dev-pre-destroy: cloud-dev-kubeconfig cloud-dev-shutdown-apps cloud-dev-drain-db cloud-dev-uninstall-apps
 	@echo "\nSUCCESS: Cloud dev pre-destroy shutdown complete."
 
+cloud-dev-pre-destroy-check:
+	@echo "\nINFO: Pre-destroy dry-run checklist for cloud-dev."
+	@echo "INFO: Real pre-destroy command sequence:"
+	@echo "      make cloud-dev-kubeconfig"
+	@echo "      make cloud-dev-shutdown-apps"
+	@echo "      make cloud-dev-drain-db"
+	@echo "      make cloud-dev-uninstall-apps"
+	@echo "\nINFO: Current Kubernetes context:"
+	@kubectl config current-context || true
+	@echo "\nINFO: Helm release status:"
+	@helm status survivor-network -n $(DEV_NAMESPACE) || true
+	@echo "\nINFO: App-managed resources using selector $(APP_LABEL_SELECTOR):"
+	@kubectl -n $(DEV_NAMESPACE) get deploy,svc,ingress,configmap,secret -l $(APP_LABEL_SELECTOR) -o wide || true
+	@echo "\nINFO: Current pods in $(DEV_NAMESPACE):"
+	@kubectl -n $(DEV_NAMESPACE) get pods -o wide || true
+	@echo "\nINFO: Terraform destroy plan command:"
+	@echo "      make cloud-dev-plan-destroy"
+	@echo "WARN: This check target does not scale, delete, uninstall, or destroy anything."
+
 cloud-dev-shutdown-apps:
 	@echo "\nINFO: Scaling application deployments in $(DEV_NAMESPACE) to zero..."
 	@set -e; \
@@ -484,23 +506,33 @@ cloud-dev-uninstall-apps:
 	fi; \
 	echo "INFO: Verifying application Kubernetes resources are removed..."; \
 	if kubectl get namespace $(DEV_NAMESPACE) >/dev/null 2>&1; then \
-		kubectl -n $(DEV_NAMESPACE) get deploy,svc,ingress || true; \
-		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get deploy -o name 2>/dev/null)" ]; then \
-			echo "ERROR: Deployments still exist after Helm uninstall."; \
-			kubectl -n $(DEV_NAMESPACE) get deploy -o wide || true; \
+		kubectl -n $(DEV_NAMESPACE) get deploy,svc,ingress,configmap,secret -l $(APP_LABEL_SELECTOR) || true; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get deploy -l $(APP_LABEL_SELECTOR) -o name 2>/dev/null)" ]; then \
+			echo "ERROR: App-managed deployments still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get deploy -l $(APP_LABEL_SELECTOR) -o wide || true; \
 			exit 1; \
 		fi; \
-		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get svc -o name 2>/dev/null)" ]; then \
-			echo "ERROR: Services still exist after Helm uninstall."; \
-			kubectl -n $(DEV_NAMESPACE) get svc -o wide || true; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get svc -l $(APP_LABEL_SELECTOR) -o name 2>/dev/null)" ]; then \
+			echo "ERROR: App-managed services still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get svc -l $(APP_LABEL_SELECTOR) -o wide || true; \
 			exit 1; \
 		fi; \
-		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get ingress -o name 2>/dev/null)" ]; then \
-			echo "ERROR: Ingress resources still exist after Helm uninstall."; \
-			kubectl -n $(DEV_NAMESPACE) get ingress -o wide || true; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get ingress -l $(APP_LABEL_SELECTOR) -o name 2>/dev/null)" ]; then \
+			echo "ERROR: App-managed ingress resources still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get ingress -l $(APP_LABEL_SELECTOR) -o wide || true; \
 			exit 1; \
 		fi; \
-		echo "SUCCESS: Application deployments, services, and ingresses are removed."; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get configmap -l $(APP_LABEL_SELECTOR) -o name 2>/dev/null)" ]; then \
+			echo "ERROR: App-managed configmaps still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get configmap -l $(APP_LABEL_SELECTOR) || true; \
+			exit 1; \
+		fi; \
+		if [ -n "$$(kubectl -n $(DEV_NAMESPACE) get secret -l $(APP_LABEL_SELECTOR) -o name 2>/dev/null)" ]; then \
+			echo "ERROR: App-managed secrets still exist after Helm uninstall."; \
+			kubectl -n $(DEV_NAMESPACE) get secret -l $(APP_LABEL_SELECTOR) || true; \
+			exit 1; \
+		fi; \
+		echo "SUCCESS: App-managed deployments, services, ingresses, configmaps, and secrets are removed."; \
 	else \
 		echo "SUCCESS: Namespace $(DEV_NAMESPACE) is already absent."; \
 	fi
@@ -529,6 +561,18 @@ cloud-dev-destroy-safe:
 	$(MAKE) cloud-dev-plan-destroy
 	$(MAKE) cloud-dev-destroy
 	@echo "\nSUCCESS: Safe cloud-dev destroy complete."
+
+cloud-dev-destroy-safe-check:
+	@echo "\nINFO: Safe destroy dry-run checklist for cloud-dev."
+	@echo "INFO: Real safe destroy command sequence:"
+	@echo "      make cloud-dev-pre-destroy"
+	@echo "      make cloud-dev-plan-destroy"
+	@echo "      cd $(TF_DEV_DIR) && terraform show $(TF_DESTROY_PLAN)"
+	@echo "      make cloud-dev-destroy"
+	@echo "\nINFO: Inspecting current pre-destroy state:"
+	@$(MAKE) cloud-dev-pre-destroy-check
+	@echo "\nWARN: Review the saved destroy plan before applying it."
+	@echo "WARN: This check target does not scale, delete, uninstall, plan, or destroy anything."
 
 cloud-dev-bootstrap: cloud-dev-platform-ready
 	@echo "\nSUCCESS: Cloud dev bootstrap complete."

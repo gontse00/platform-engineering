@@ -1,5 +1,9 @@
 {{- range $key, $svc := .Values.services }}
 {{- if and $svc.enabled $svc.ingress $svc.ingress.enabled }}
+{{- $host := $svc.ingress.host }}
+{{- if and (not $host) $.Values.global.domain }}
+{{- $host = printf "%s.%s" ($svc.ingress.subdomain | default $svc.name) $.Values.global.domain }}
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -11,10 +15,19 @@ metadata:
     {{- include "survivor-network.labels" $ | nindent 4 }}
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    {{- if and $.Values.global.ingress.tls.enabled $.Values.global.ingress.tls.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ $.Values.global.ingress.tls.clusterIssuer | quote }}
+    {{- end }}
 spec:
   ingressClassName: nginx
+  {{- if $.Values.global.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ $host }}
+      secretName: {{ $svc.name }}-{{ $.Values.global.ingress.tls.secretNameSuffix | default "tls" }}
+  {{- end }}
   rules:
-    - host: {{ $svc.ingress.host }}
+    - host: {{ $host }}
       http:
         paths:
           - path: /

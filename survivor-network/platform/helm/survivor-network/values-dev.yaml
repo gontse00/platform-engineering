@@ -4,6 +4,12 @@
 global:
   imageRegistry: "europe-west2-docker.pkg.dev/survivor-rescue-net-dev/survivor-network"
   imagePullPolicy: Always
+  domain: "survivor-dev.example.com"
+  ingress:
+    tls:
+      enabled: false
+      clusterIssuer: ""
+      secretNameSuffix: tls
 
 initDb:
   enabled: false
@@ -24,7 +30,8 @@ services:
         secretKey: DATABASE_URL
     ingress:
       enabled: true
-      host: chatbot.survivor-dev.example.com
+      host: null
+      subdomain: chatbot
 
   adminService:
     image:
@@ -36,7 +43,8 @@ services:
       AUTH_MODE: "dev"
     ingress:
       enabled: true
-      host: admin-api.survivor-dev.example.com
+      host: null
+      subdomain: admin-api
 
   incidentService:
     image:
@@ -49,7 +57,8 @@ services:
         secretKey: DATABASE_URL
     ingress:
       enabled: true
-      host: incidents.survivor-dev.example.com
+      host: null
+      subdomain: incidents
 
   participantService:
     image:
@@ -60,7 +69,8 @@ services:
         secretKey: DATABASE_URL
     ingress:
       enabled: true
-      host: participants.survivor-dev.example.com
+      host: null
+      subdomain: participants
 
   graphCore:
     image:
@@ -73,7 +83,8 @@ services:
         secretKey: DATABASE_URL
     ingress:
       enabled: true
-      host: graph.survivor-dev.example.com
+      host: null
+      subdomain: graph
 
   agentService:
     image:
@@ -88,11 +99,13 @@ services:
       tag: "dev"
     ingress:
       enabled: true
-      host: chat.survivor-dev.example.com
+      host: null
+      subdomain: chat
 
   adminUi:
     image:
       tag: "dev"
     ingress:
       enabled: true
-      host: dashboard.survivor-dev.example.com
+      host: null
+      subdomain: dashboard
