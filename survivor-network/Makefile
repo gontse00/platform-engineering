@@ -589,6 +589,15 @@ cloud-dev-clean-db-owned:
 		echo "      DATABASE_URL='postgresql+psycopg2://survivor:password@ip:5432/survivor' make cloud-dev-clean-db-owned"; \
 		exit 1; \
 	fi; \
+	PSQL_URL="$$(printf "%s" "$$DB_URL" | sed "s#^postgresql+[^:]*://#postgresql://#")"; \
+	case "$$PSQL_URL" in \
+		postgresql://*) ;; \
+		*) \
+			echo "ERROR: DATABASE_URL did not normalize to a PostgreSQL connection URL."; \
+			echo "INFO: Expected postgresql://... or postgresql+psycopg2://..."; \
+			exit 1; \
+			;; \
+	esac; \
 	if kubectl get namespace $(DEV_NAMESPACE) >/dev/null 2>&1; then \
 		echo "INFO: Running DB cleanup from a temporary Kubernetes pod."; \
 		kubectl -n $(DEV_NAMESPACE) delete pod db-destroy-cleanup --ignore-not-found --wait=false >/dev/null 2>&1 || true; \
@@ -596,19 +605,18 @@ cloud-dev-clean-db-owned:
 			--image=postgres:16-alpine \
 			--rm -i \
 			--restart=Never \
-			--env="DATABASE_URL=$$DB_URL" \
+			--env="PSQL_URL=$$PSQL_URL" \
 			--env="DB_OWNER=$(CLOUD_SQL_USER)" \
-			--command -- sh -c 'PSQL_URL=$$(printf "%s" "$$DATABASE_URL" | sed "s#^postgresql+[^:]*://#postgresql://#"); echo "INFO: Dropping objects owned by role $$DB_OWNER in database $(CLOUD_SQL_DATABASE)..."; psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$$DB_OWNER\" CASCADE;"'; \
+			--command -- sh -c 'test -n "$$PSQL_URL"; echo "INFO: Dropping objects owned by role $$DB_OWNER in database $(CLOUD_SQL_DATABASE)..."; psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$$DB_OWNER\" CASCADE;"'; \
 	elif command -v docker >/dev/null 2>&1; then \
 		echo "WARN: Kubernetes is unavailable; running DB cleanup with local Docker."; \
-		docker run --rm \
-			-e "DATABASE_URL=$$DB_URL" \
-			-e "DB_OWNER=$(CLOUD_SQL_USER)" \
+		PSQL_URL="$$PSQL_URL" DB_OWNER="$(CLOUD_SQL_USER)" docker run --rm \
+			-e PSQL_URL \
+			-e DB_OWNER \
 			postgres:16-alpine \
-			sh -c 'PSQL_URL=$$(printf "%s" "$$DATABASE_URL" | sed "s#^postgresql+[^:]*://#postgresql://#"); echo "INFO: Dropping objects owned by role $$DB_OWNER in database $(CLOUD_SQL_DATABASE)..."; psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$$DB_OWNER\" CASCADE;"'; \
+			sh -c 'test -n "$$PSQL_URL"; echo "INFO: Dropping objects owned by role $$DB_OWNER in database $(CLOUD_SQL_DATABASE)..."; psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$$DB_OWNER\" CASCADE;"'; \
 	elif command -v psql >/dev/null 2>&1; then \
 		echo "WARN: Kubernetes is unavailable; running DB cleanup with local psql."; \
-		PSQL_URL="$$(printf "%s" "$$DB_URL" | sed "s#^postgresql+[^:]*://#postgresql://#")"; \
 		psql "$$PSQL_URL" -v ON_ERROR_STOP=1 -c "DROP OWNED BY \"$(CLOUD_SQL_USER)\" CASCADE;"; \
 	else \
 		echo "ERROR: Kubernetes is unavailable and neither docker nor psql is installed locally."; \
