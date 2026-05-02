@@ -35,6 +35,9 @@ SMOKE_CURL_IMAGE   ?= curlimages/curl
 CLOUD_DEV_SHUTDOWN_TIMEOUT ?= 180s
 APP_LABEL_SELECTOR ?= app.kubernetes.io/part-of=survivor-network
 CLOUD_DEV_DOMAIN ?= dev.rescuenet.co.za
+CLOUD_DEV_PUBLIC_SCHEME ?= http
+ADMIN_UI_GRAPH_CORE_URL ?= $(CLOUD_DEV_PUBLIC_SCHEME)://graph.$(CLOUD_DEV_DOMAIN)
+ADMIN_UI_ADMIN_SERVICE_URL ?= $(CLOUD_DEV_PUBLIC_SCHEME)://admin-api.$(CLOUD_DEV_DOMAIN)
 GCP_SECRET_DB_URL ?= survivor-db-url
 CLOUD_SQL_CONNECTION_NAME ?= $(GCP_PROJECT):$(GCP_REGION):$(CLOUD_SQL_INSTANCE)
 CONFIRM_PROD_TLS ?= false
@@ -839,7 +842,7 @@ cloud-dev-build-push: cloud-dev-buildx-bootstrap
 	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/chatbot-service:$(IMAGE_TAG) $(DIR_chatbot-service) --push
 	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/graph-core:$(IMAGE_TAG) $(DIR_graph-core) --push
 	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/chatbot-ui:$(IMAGE_TAG) $(DIR_chatbot-ui) --push
-	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/admin-ui:$(IMAGE_TAG) $(DIR_admin-ui) --push
+	docker buildx build --platform $(DOCKER_PLATFORM) --build-arg VITE_GRAPH_CORE_URL=$(ADMIN_UI_GRAPH_CORE_URL) --build-arg VITE_ADMIN_SERVICE_URL=$(ADMIN_UI_ADMIN_SERVICE_URL) -t $(REGISTRY)/admin-ui:$(IMAGE_TAG) $(DIR_admin-ui) --push
 	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/agent-service:$(IMAGE_TAG) $(DIR_agent-service) --push
 	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/incident-service:$(IMAGE_TAG) $(DIR_incident-service) --push
 	docker buildx build --platform $(DOCKER_PLATFORM) -t $(REGISTRY)/participant-service:$(IMAGE_TAG) $(DIR_participant-service) --push

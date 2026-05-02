@@ -18,6 +18,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://admin-ui.127.0.0.1.nip.io",
+        "http://admin.dev.rescuenet.co.za",
+        "https://admin.dev.rescuenet.co.za",
         "http://localhost:5174",
         "http://localhost:5173",
     ],
