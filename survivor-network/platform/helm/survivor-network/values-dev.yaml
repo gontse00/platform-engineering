@@ -12,7 +12,7 @@ global:
       maxUnavailable: 1
   ingress:
     tls:
-      enabled: false
+      enabled: true
       clusterIssuer: "letsencrypt-staging"
       secretNameSuffix: tls
   cloudSql:
