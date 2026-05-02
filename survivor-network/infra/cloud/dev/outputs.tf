@@ -18,6 +18,11 @@ output "cluster_location" {
   value       = var.zone
 }
 
+output "ingress_static_ip" {
+  description = "Regional static external IP reserved for ingress-nginx"
+  value       = google_compute_address.ingress.address
+}
+
 output "database_instance_name" {
   description = "Cloud SQL instance name"
   value       = module.postgres.instance_name

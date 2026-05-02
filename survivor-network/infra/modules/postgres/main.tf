@@ -56,6 +56,14 @@ resource "google_sql_database_instance" "main" {
     }
   }
 
+  lifecycle {
+    # cloud-dev authorizes current GKE node NAT IPs after cluster creation.
+    # Keep that operational patch from being removed by the next Terraform apply.
+    ignore_changes = [
+      settings[0].ip_configuration[0].authorized_networks,
+    ]
+  }
+
   deletion_protection = false # dev — allow easy teardown
 }
 

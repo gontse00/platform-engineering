@@ -6,6 +6,8 @@ The current cloud-dev architecture is intentionally preserved: Terraform creates
 
 For the staged real-domain, TLS, GCP Secret Manager, External Secrets, and Cloud SQL hardening path, see [Cloud Dev DNS, TLS, Secrets, and SQL Hardening](cloud-dev-dns-tls-secrets-sql.md).
 
+For the static ingress IP workflow required before production TLS, see [Cloud Dev Static Ingress IP](cloud-dev-static-ingress-ip.md).
+
 ## Recommended Flow
 
 Use the saved Terraform plan workflow, then run the canonical platform bootstrap target:

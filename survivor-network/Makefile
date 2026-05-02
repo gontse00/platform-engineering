@@ -84,7 +84,7 @@ DIR_admin-service       := ./admin-service
         cloud-dev-bootstrap cloud-dev-platform-ready cloud-dev-kubeconfig cloud-dev-kubeconfig-if-present cloud-dev-create-namespaces cloud-dev-install-ingress \
         cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-create-db-secret cloud-dev-create-db-secret-from-tf \
         cloud-dev-bootstrap-verify cloud-dev-buildx-bootstrap cloud-dev-verify-images cloud-dev-restart-apps cloud-dev-full-recreate \
-        cloud-dev-dns-info cloud-dev-tls-apply-staging-issuer cloud-dev-tls-apply-prod-issuer cloud-dev-tls-verify \
+        cloud-dev-ingress-ip cloud-dev-ingress-static-ip-verify cloud-dev-dns-info cloud-dev-tls-apply-staging-issuer cloud-dev-tls-apply-prod-issuer cloud-dev-tls-verify \
         cloud-dev-secret-create-db-url cloud-dev-secret-put-db-url cloud-dev-secret-describe-db-url \
         cloud-dev-external-secrets-apply cloud-dev-external-secrets-verify cloud-dev-sql-info \
         deploy-dev kubeconfig-dev cloud-dev-build-push cloud-dev-authorize-sql cloud-dev-create-secrets \
@@ -153,6 +153,8 @@ help:
 	@echo "  make cloud-dev-create-db-secret — create DB secret from DATABASE_URL"
 	@echo "  make cloud-dev-create-db-secret-from-tf — create DB secret from Terraform output"
 	@echo "  make cloud-dev-create-secrets — legacy interactive DB secret fallback"
+	@echo "  make cloud-dev-ingress-ip — compare Terraform static IP and ingress service IP"
+	@echo "  make cloud-dev-ingress-static-ip-verify — require ingress-nginx to use Terraform static IP"
 	@echo "  make cloud-dev-dns-info — print rescuenet.co.za DNS records and ingress IP"
 	@echo "  make cloud-dev-tls-verify — inspect cert-manager issuers/certificates"
 	@echo "  make cloud-dev-secret-create-db-url — create Secret Manager DB secret shell"
@@ -647,7 +649,7 @@ cloud-dev-destroy-safe-check:
 cloud-dev-bootstrap: cloud-dev-platform-ready
 	@echo "\nSUCCESS: Cloud dev bootstrap complete."
 
-cloud-dev-platform-ready: cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-authorize-sql cloud-dev-create-db-secret cloud-dev-bootstrap-verify
+cloud-dev-platform-ready: cloud-dev-kubeconfig cloud-dev-create-namespaces cloud-dev-install-ingress cloud-dev-ingress-static-ip-verify cloud-dev-install-cert-manager cloud-dev-install-external-secrets cloud-dev-authorize-sql cloud-dev-create-db-secret cloud-dev-bootstrap-verify
 	@echo "\nSUCCESS: Cloud dev platform is ready."
 
 cloud-dev-kubeconfig:
@@ -679,10 +681,25 @@ cloud-dev-install-ingress:
 	@echo "\nINFO: Installing ingress-nginx..."
 	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
 	helm repo update
+	@set -e; \
+	INGRESS_STATIC_IP="$$(cd $(TF_DEV_DIR) && terraform output -raw ingress_static_ip 2>/dev/null || true)"; \
+	INGRESS_STATIC_IP_SET=""; \
+	if [ -n "$$INGRESS_STATIC_IP" ]; then \
+		echo "INFO: Using Terraform-managed ingress static IP: $$INGRESS_STATIC_IP"; \
+		INGRESS_STATIC_IP_SET="--set controller.service.loadBalancerIP=$$INGRESS_STATIC_IP"; \
+	else \
+		echo "WARN: Terraform output ingress_static_ip is unavailable; ingress-nginx will use an ephemeral LoadBalancer IP."; \
+		echo "INFO: Run make cloud-dev-plan && make cloud-dev-apply to create the static IP."; \
+		if [ "$(CLOUD_DEV_STRICT)" = "true" ]; then \
+			echo "ERROR: CLOUD_DEV_STRICT=true, failing because ingress_static_ip is unavailable."; \
+			exit 1; \
+		fi; \
+	fi; \
 	helm upgrade --install $(INGRESS_NGINX_RELEASE) $(INGRESS_NGINX_CHART) \
 		--namespace $(INGRESS_NGINX_NAMESPACE) \
 		--create-namespace \
 		--set controller.service.type=LoadBalancer \
+		$$INGRESS_STATIC_IP_SET \
 		--set controller.metrics.enabled=true \
 		--set controller.resources.requests.cpu=$(INGRESS_NGINX_CPU_REQUEST) \
 		--set controller.resources.requests.memory=$(INGRESS_NGINX_MEMORY_REQUEST) \
@@ -730,6 +747,57 @@ cloud-dev-install-ingress:
 		sleep 10; \
 	done
 	@echo "SUCCESS: ingress-nginx ready."
+
+cloud-dev-ingress-ip:
+	@echo "\nINFO: Cloud-dev ingress IP status"
+	@set -e; \
+	STATIC_IP="$$(cd $(TF_DEV_DIR) && terraform output -raw ingress_static_ip 2>/dev/null || true)"; \
+	LB_IP="$$(kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"; \
+	if [ -n "$$STATIC_IP" ]; then \
+		echo "Terraform ingress_static_ip: $$STATIC_IP"; \
+	else \
+		echo "WARN: Terraform output ingress_static_ip is unavailable."; \
+	fi; \
+	if [ -n "$$LB_IP" ]; then \
+		echo "ingress-nginx LoadBalancer IP: $$LB_IP"; \
+	else \
+		echo "WARN: ingress-nginx LoadBalancer IP is unavailable."; \
+	fi; \
+	if [ -n "$$STATIC_IP" ] && [ -n "$$LB_IP" ]; then \
+		if [ "$$STATIC_IP" = "$$LB_IP" ]; then \
+			echo "SUCCESS: ingress-nginx is using the Terraform-managed static IP."; \
+		else \
+			echo "WARN: ingress-nginx is not using the Terraform-managed static IP."; \
+		fi; \
+	fi
+
+cloud-dev-ingress-static-ip-verify:
+	@echo "\nINFO: Verifying ingress-nginx uses the Terraform-managed static IP..."
+	@set -e; \
+	STATIC_IP="$$(cd $(TF_DEV_DIR) && terraform output -raw ingress_static_ip 2>/dev/null || true)"; \
+	if [ -z "$$STATIC_IP" ]; then \
+		echo "ERROR: Terraform output ingress_static_ip is unavailable."; \
+		echo "INFO: Run make cloud-dev-plan && make cloud-dev-apply, then retry."; \
+		exit 1; \
+	fi; \
+	if ! kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller >/dev/null 2>&1; then \
+		echo "ERROR: ingress-nginx LoadBalancer service is missing."; \
+		exit 1; \
+	fi; \
+	LB_IP="$$(kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"; \
+	if [ -z "$$LB_IP" ]; then \
+		echo "ERROR: ingress-nginx LoadBalancer has no external IP yet."; \
+		kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o wide || true; \
+		exit 1; \
+	fi; \
+	if [ "$$STATIC_IP" != "$$LB_IP" ]; then \
+		echo "ERROR: ingress-nginx LoadBalancer IP does not match Terraform static IP."; \
+		echo "INFO: Terraform static IP: $$STATIC_IP"; \
+		echo "INFO: LoadBalancer IP:     $$LB_IP"; \
+		kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o wide || true; \
+		exit 1; \
+	fi; \
+	echo "SUCCESS: ingress-nginx LoadBalancer is using static IP $$STATIC_IP."
 
 cloud-dev-install-cert-manager:
 	@echo "\nINFO: Installing cert-manager..."
@@ -870,17 +938,32 @@ cloud-dev-create-secrets:
 
 cloud-dev-dns-info:
 	@echo "\nINFO: Cloud-dev DNS plan for $(CLOUD_DEV_DOMAIN)"
-	@echo "INFO: Ingress LoadBalancer service:"
-	@kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o wide || true
-	@echo "\nINFO: Create A records in rescuenet.co.za DNS pointing to the ingress external IP:"
-	@echo "  chat.$(CLOUD_DEV_DOMAIN)         -> chatbot-ui"
-	@echo "  api.$(CLOUD_DEV_DOMAIN)          -> chatbot-service"
-	@echo "  admin.$(CLOUD_DEV_DOMAIN)        -> admin-ui"
-	@echo "  admin-api.$(CLOUD_DEV_DOMAIN)    -> admin-service"
-	@echo "  graph.$(CLOUD_DEV_DOMAIN)        -> graph-core"
-	@echo "  incidents.$(CLOUD_DEV_DOMAIN)    -> incident-service"
-	@echo "  participants.$(CLOUD_DEV_DOMAIN) -> participant-service"
-	@echo "\nINFO: Test before DNS propagation with: curl -H 'Host: api.$(CLOUD_DEV_DOMAIN)' http://<INGRESS_IP>/health"
+	@set -e; \
+	STATIC_IP="$$(cd $(TF_DEV_DIR) && terraform output -raw ingress_static_ip 2>/dev/null || true)"; \
+	LB_IP="$$(kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"; \
+	DNS_IP="$$STATIC_IP"; \
+	if [ -z "$$DNS_IP" ]; then \
+		DNS_IP="$$LB_IP"; \
+	fi; \
+	echo "INFO: Ingress LoadBalancer service:"; \
+	kubectl -n $(INGRESS_NGINX_NAMESPACE) get svc $(INGRESS_NGINX_RELEASE)-controller -o wide || true; \
+	if [ -n "$$STATIC_IP" ]; then \
+		echo "INFO: Terraform static IP: $$STATIC_IP"; \
+	else \
+		echo "WARN: Terraform static IP output is unavailable; showing current LoadBalancer IP if present."; \
+	fi; \
+	if [ -z "$$DNS_IP" ]; then \
+		DNS_IP="<STATIC_IP>"; \
+	fi; \
+	echo "\nINFO: Create A records in rescuenet.co.za DNS:"; \
+	echo "  chat.dev          A   $$DNS_IP"; \
+	echo "  api.dev           A   $$DNS_IP"; \
+	echo "  admin.dev         A   $$DNS_IP"; \
+	echo "  admin-api.dev     A   $$DNS_IP"; \
+	echo "  graph.dev         A   $$DNS_IP"; \
+	echo "  incidents.dev     A   $$DNS_IP"; \
+	echo "  participants.dev  A   $$DNS_IP"; \
+	echo "\nINFO: Test before DNS propagation with: curl -H 'Host: api.$(CLOUD_DEV_DOMAIN)' http://$$DNS_IP/health"
 
 cloud-dev-tls-apply-staging-issuer:
 	@echo "\nINFO: Applying Let's Encrypt staging ClusterIssuer..."

@@ -7,7 +7,8 @@ Current state:
 - GKE, ingress-nginx, Helm deploys, internal smoke tests, and Cloud SQL public-IP access are working.
 - App database configuration still supports `DATABASE_URL` to Kubernetes Secret `survivor-db-url`.
 - External Secrets Operator and cert-manager are installed during bootstrap, but production use is staged.
-- TLS and Cloud SQL Auth Proxy are disabled by default until DNS, IAM, and certificates are verified.
+- Staging TLS is enabled for cloud-dev; production TLS and Cloud SQL Auth Proxy remain staged until DNS, IAM, and certificates are verified.
+- Before production TLS, ingress-nginx should use the Terraform-managed static IP described in [Cloud Dev Static Ingress IP](cloud-dev-static-ingress-ip.md).
 
 ## DNS Setup
 
@@ -34,9 +35,10 @@ Get the ingress-nginx external IP:
 ```bash
 kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
 make cloud-dev-dns-info
+make cloud-dev-ingress-static-ip-verify
 ```
 
-Create DNS A records in the `rescuenet.co.za` zone pointing each hostname above to the ingress-nginx LoadBalancer external IP. A wildcard record for `*.dev.rescuenet.co.za` can work for dev if your DNS policy allows it, but explicit A records are easier to audit.
+Create DNS A records in the `rescuenet.co.za` zone pointing each hostname above to the Terraform-managed static ingress IP. A wildcard record for `*.dev.rescuenet.co.za` can work for dev if your DNS policy allows it, but explicit A records are easier to audit.
 
 Before DNS propagates, test ingress routing with a Host header:
 
@@ -49,30 +51,32 @@ ExternalDNS is a future option. The Makefile intentionally does not mutate DNS r
 
 ## TLS With Cert-Manager
 
-TLS is exposed through Helm values but remains disabled by default:
+Staging TLS is enabled in cloud-dev Helm values:
 
 ```yaml
 global:
   ingress:
     tls:
-      enabled: false
+      enabled: true
       clusterIssuer: letsencrypt-staging
       secretNameSuffix: tls
 ```
 
 Safe rollout sequence:
 
-1. Configure DNS A records for `*.dev.rescuenet.co.za` or each required hostname.
-2. Verify HTTP works first through ingress-nginx.
-3. Confirm the ClusterIssuer email in `platform/bootstrap/cert-manager/clusterissuer-letsencrypt-staging.yaml`.
-4. Apply the staging issuer:
+1. Reserve and bind the static ingress IP with Terraform and `make cloud-dev-platform-ready`.
+2. Verify ingress-nginx is using the static IP with `make cloud-dev-ingress-static-ip-verify`.
+3. Configure DNS A records for `*.dev.rescuenet.co.za` or each required hostname.
+4. Verify HTTP works first through ingress-nginx.
+5. Confirm the ClusterIssuer email in `platform/bootstrap/cert-manager/clusterissuer-letsencrypt-staging.yaml`.
+6. Apply the staging issuer:
 
 ```bash
 make cloud-dev-tls-apply-staging-issuer
 ```
 
-5. Enable TLS with `letsencrypt-staging` in Helm values or with `--set`.
-6. Deploy and verify certificates:
+7. Enable TLS with `letsencrypt-staging` in Helm values or with `--set`.
+8. Deploy and verify certificates:
 
 ```bash
 kubectl get clusterissuer
@@ -83,7 +87,7 @@ kubectl describe challenge -A
 make cloud-dev-tls-verify
 ```
 
-7. Switch to `letsencrypt-prod` only after staging certificates succeed. Production issuer application is guarded:
+9. Switch to `letsencrypt-prod` only after static IP, DNS, HTTP, and staging certificates succeed. Production issuer application is guarded:
 
 ```bash
 CONFIRM_PROD_TLS=true make cloud-dev-tls-apply-prod-issuer

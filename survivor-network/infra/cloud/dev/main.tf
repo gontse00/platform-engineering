@@ -19,6 +19,18 @@ provider "google" {
   region  = var.region
 }
 
+# --- Static Ingress IP ---
+resource "google_compute_address" "ingress" {
+  name         = "rescuenet-dev-ingress-ip"
+  project      = var.project_id
+  region       = var.region
+  address_type = "EXTERNAL"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # --- Container Registry (Artifact Registry) ---
 module "container_registry" {
   source        = "../../modules/container-registry"
