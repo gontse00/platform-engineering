@@ -2,7 +2,7 @@ name: Build Images
 
 on:
   push:
-    branches: [main]
+    branches: [master, rescue-net, cloud/gcp-dev]
     paths:
       - "survivor-network/chatbot-service/**"
       - "survivor-network/admin-service/**"
@@ -10,41 +10,63 @@ on:
       - "survivor-network/participant-service/**"
       - "survivor-network/agent-service/**"
       - "survivor-network/graph-core/**"
+      - "survivor-network/chatbot-ui-service/**"
+      - "survivor-network/admin-ui/**"
 
 env:
-  # TODO: Set these in GitHub repository secrets/variables
-  REGISTRY: "africa-south1-docker.pkg.dev/PROJECT_ID/survivor-images"
+  GCP_REGION: europe-west2
+  REGISTRY: "europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/survivor-network"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service:
-          - chatbot-service
-          - admin-service
-          - incident-service
-          - participant-service
-          - agent-service
+        include:
+          - name: chatbot-service
+            path: survivor-network/chatbot-service
+          - name: graph-core
+            path: survivor-network/graph-core/backend
+          - name: chatbot-ui
+            path: survivor-network/chatbot-ui-service
+          - name: admin-ui
+            path: survivor-network/admin-ui
+          - name: agent-service
+            path: survivor-network/agent-service
+          - name: incident-service
+            path: survivor-network/incident-service
+          - name: participant-service
+            path: survivor-network/participant-service
+          - name: admin-service
+            path: survivor-network/admin-service
     steps:
       - uses: actions/checkout@v4
 
-      # TODO: Authenticate to container registry
-      # - uses: google-github-actions/auth@v2
-      #   with:
-      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
-      # - uses: google-github-actions/setup-gcloud@v2
-      # - run: gcloud auth configure-docker africa-south1-docker.pkg.dev
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Artifact Registry auth
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Build image
         run: |
+          build_args=()
+          if [ "${{ matrix.name }}" = "admin-ui" ]; then
+            build_args+=(
+              --build-arg VITE_GRAPH_CORE_URL="http://graph.dev.rescuenet.co.za"
+              --build-arg VITE_ADMIN_SERVICE_URL="http://admin-api.dev.rescuenet.co.za"
+            )
+          fi
           docker build \
-            -t ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }} \
-            -t ${{ env.REGISTRY }}/${{ matrix.service }}:latest \
-            survivor-network/${{ matrix.service }}
+            "${build_args[@]}" \
+            -t ${{ env.REGISTRY }}/${{ matrix.name }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ matrix.name }}:dev \
+            ${{ matrix.path }}
 
-      # TODO: Push to registry once auth is configured
-      # - name: Push image
-      #   run: |
-      #     docker push ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
-      #     docker push ${{ env.REGISTRY }}/${{ matrix.service }}:latest
+      - name: Push image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ matrix.name }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ matrix.name }}:dev

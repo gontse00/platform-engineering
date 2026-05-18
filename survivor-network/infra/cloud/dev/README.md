@@ -115,7 +115,7 @@ terraform destroy
 
 ```bash
 # Create state bucket
-gsutil mb -l europe-west2 gs://survivor-rescue-net-dev-tfstate
+gsutil mb -l europe-west2 gs://survivor-terraform-state-dev
 
 # Uncomment backend.tf and re-init
 terraform init -migrate-state

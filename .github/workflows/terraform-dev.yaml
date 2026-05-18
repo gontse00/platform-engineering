@@ -3,7 +3,7 @@ name: Terraform Dev
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [cloud/gcp-dev]
     paths:
       - "survivor-network/infra/cloud/dev/**"
       - "survivor-network/infra/modules/**"
@@ -18,10 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # TODO: Authenticate to GCP
-      # - uses: google-github-actions/auth@v2
-      #   with:
-      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -31,20 +30,21 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: terraform plan -var-file=terraform.tfvars
-        # TODO: terraform.tfvars should be generated from secrets in CI
+        run: |
+          terraform plan \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="cloud_sql_password=${{ secrets.CLOUD_SQL_PASSWORD }}"
 
   apply:
     runs-on: ubuntu-latest
     needs: plan
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/cloud/gcp-dev' && github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 
-      # TODO: Authenticate to GCP
-      # - uses: google-github-actions/auth@v2
-      #   with:
-      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -54,4 +54,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var-file=terraform.tfvars
+        run: |
+          terraform apply -auto-approve \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="cloud_sql_password=${{ secrets.CLOUD_SQL_PASSWORD }}"

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [rescue-net, main]
+    branches: [master, rescue-net, cloud/gcp-dev]
   pull_request:
-    branches: [rescue-net, main]
+    branches: [master, rescue-net, cloud/gcp-dev]
 
 jobs:
   test-chatbot-service:
